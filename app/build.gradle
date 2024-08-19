@@ -1,0 +1,66 @@
+plugins {
+    id 'com.android.application'
+}
+
+android {
+    namespace 'org.ferreiratechlab.leitordepdfseguro'
+    compileSdk 33
+    configurations.all {
+        resolutionStrategy {
+            force 'androidx.core:core:1.9.0'
+            // Adicione outras dependências aqui, se necessário
+        }
+    }
+        // ...
+    packagingOptions {
+        exclude 'META-INF/DEPENDENCIES'
+    }
+
+
+    defaultConfig {
+        applicationId "org.ferreiratechlab.leitordepdfseguro"
+        minSdk 23
+        targetSdk 33
+        versionCode 4
+        versionName "1.3"
+
+        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+    }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
+
+}
+
+
+dependencies {
+    implementation 'androidx.appcompat:appcompat:1.6.1'
+    implementation 'com.google.android.material:material:1.6.0'
+    implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
+    implementation 'androidx.navigation:navigation-runtime:2.5.3'
+    testImplementation 'junit:junit:4.13.2'
+    androidTestImplementation 'androidx.test.ext:junit:1.1.5'
+    androidTestImplementation 'androidx.test.espresso:espresso-core:3.5.1'
+    implementation 'androidx.biometric:biometric:1.2.0-alpha03'
+    implementation 'com.github.mhiew:android-pdf-viewer:3.2.0-beta.3'
+    implementation 'androidx.security:security-crypto:1.0.0-rc03'
+    implementation ('org.apache.pdfbox:pdfbox-app:2.0.24') {
+        exclude group: 'commons-logging', module: 'commons-logging'
+    }
+    implementation 'androidx.navigation:navigation-fragment-ktx:2.4.1'
+    implementation 'androidx.navigation:navigation-ui-ktx:2.4.1'
+    def room_version = "2.4.1"
+    implementation "androidx.room:room-runtime:$room_version"
+    annotationProcessor "androidx.room:room-compiler:$room_version"
+    implementation 'androidx.core:core:1.9.0'
+
+
+}

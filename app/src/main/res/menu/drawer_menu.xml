@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+    <group android:checkableBehavior="single">
+
+        <item
+            android:id="@+id/nav_item2"
+            android:icon="@drawable/baseline_help_24"
+            android:title="Instruções" />
+        <item
+            android:id="@+id/nav_item3"
+            android:icon="@drawable/baseline_enhanced_encryption_24"
+            android:title="Importância  de Criptografar os PDFs" />
+        <item
+            android:id="@+id/nav_item4"
+            android:icon="@drawable/baseline_visibility_off_24"
+            android:title="Diretórios Ocultos" />
+
+        <item
+            android:id="@+id/nav_item_backup"
+            android:title="Backup"
+            android:icon="@drawable/ic_backup"/>
+        <item
+            android:id="@+id/nav_item1"
+            android:icon="@drawable/baseline_error_24"
+            android:title="Sobre" />
+
+        <!-- Adicione mais itens conforme necessário -->
+    </group>
+</menu>

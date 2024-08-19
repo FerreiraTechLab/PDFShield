@@ -1,0 +1,9 @@
+<resources>
+    <string name="app_name">PDF Shield</string>
+    <string name="add_pdf">Novos PDFs</string>
+    <string name="navigation_drawer_open">Abrir menu de navegação</string>
+    <string name="navigation_drawer_close">Fechar menu de navegação</string>
+    <string name="fingerprint_icon">Ícone de impressão digital</string>
+    <string name="waiting_for_fingerprint">Aguardando impressão digital</string>
+    <string name="cancel">Autenticar</string>
+</resources>
