@@ -3,6 +3,8 @@ package org.ferreiratechlab.leitordepdfseguro.utils;
 import android.content.Context;
 
 import java.io.File;
+import java.io.BufferedInputStream;
+import java.io.BufferedOutputStream;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.InputStream;
@@ -10,8 +12,6 @@ import java.io.OutputStream;
 import java.security.SecureRandom;
 
 import javax.crypto.Cipher;
-import javax.crypto.CipherInputStream;
-import javax.crypto.CipherOutputStream;
 import javax.crypto.SecretKey;
 import javax.crypto.spec.GCMParameterSpec;
 
@@ -24,6 +24,7 @@ public class EncryptionUtils {
     private static final String TRANSFORMATION = "AES/GCM/NoPadding";
     private static final int IV_SIZE = 12; // IV recomendado para GCM é 12 bytes
     private static final int TAG_BIT_LENGTH = 128;
+    private static final int STREAM_BUFFER_SIZE = 262144;
 
     public static void encryptFile(Context context, File inputFile, File outputFile) throws Exception {
         SecretKey secretKey = KeyManagerUtils.getOrCreateKey();
@@ -34,27 +35,20 @@ public class EncryptionUtils {
         GCMParameterSpec spec = new GCMParameterSpec(TAG_BIT_LENGTH, iv);
         cipher.init(Cipher.ENCRYPT_MODE, secretKey, spec);
 
-        try (InputStream inputStream = new FileInputStream(inputFile);
-             OutputStream fileOutputStream = new FileOutputStream(outputFile)) {
+        try (InputStream inputStream = new BufferedInputStream(new FileInputStream(inputFile), STREAM_BUFFER_SIZE);
+             OutputStream fileOutputStream = new BufferedOutputStream(new FileOutputStream(outputFile), STREAM_BUFFER_SIZE)) {
             
             // Grava o IV nos primeiros bytes do arquivo
             fileOutputStream.write(iv);
-
-            try (CipherOutputStream cipherOutputStream = new CipherOutputStream(fileOutputStream, cipher)) {
-                byte[] buffer = new byte[65536]; // Aumentado para 64KB para melhor performance com imagens
-                int bytesRead;
-                while ((bytesRead = inputStream.read(buffer)) != -1) {
-                    cipherOutputStream.write(buffer, 0, bytesRead);
-                }
-                cipherOutputStream.flush();
-            }
+            processCipher(inputStream, fileOutputStream, cipher);
+            fileOutputStream.flush();
         }
     }
 
     public static void decryptFile(Context context, File inputFile, File outputFile) throws Exception {
         SecretKey secretKey = KeyManagerUtils.getOrCreateKey();
 
-        try (InputStream inputStream = new FileInputStream(inputFile)) {
+        try (InputStream inputStream = new BufferedInputStream(new FileInputStream(inputFile), STREAM_BUFFER_SIZE)) {
             // Lê o IV do início do arquivo
             byte[] iv = new byte[IV_SIZE];
             int ivRead = inputStream.read(iv);
@@ -66,16 +60,27 @@ public class EncryptionUtils {
             GCMParameterSpec spec = new GCMParameterSpec(TAG_BIT_LENGTH, iv);
             cipher.init(Cipher.DECRYPT_MODE, secretKey, spec);
 
-            try (OutputStream fileOutputStream = new FileOutputStream(outputFile);
-                 CipherInputStream cipherInputStream = new CipherInputStream(inputStream, cipher)) {
-                
-                byte[] buffer = new byte[65536]; // Aumentado para 64KB
-                int bytesRead;
-                while ((bytesRead = cipherInputStream.read(buffer)) != -1) {
-                    fileOutputStream.write(buffer, 0, bytesRead);
-                }
+            try (OutputStream fileOutputStream = new BufferedOutputStream(new FileOutputStream(outputFile), STREAM_BUFFER_SIZE)) {
+                processCipher(inputStream, fileOutputStream, cipher);
                 fileOutputStream.flush();
             }
+        }
+    }
+
+    private static void processCipher(InputStream inputStream, OutputStream outputStream, Cipher cipher) throws Exception {
+        byte[] inputBuffer = new byte[STREAM_BUFFER_SIZE];
+        byte[] outputBuffer = new byte[cipher.getOutputSize(STREAM_BUFFER_SIZE)];
+        int bytesRead;
+        while ((bytesRead = inputStream.read(inputBuffer)) != -1) {
+            int outputBytes = cipher.update(inputBuffer, 0, bytesRead, outputBuffer, 0);
+            if (outputBytes > 0) {
+                outputStream.write(outputBuffer, 0, outputBytes);
+            }
+        }
+
+        int finalBytes = cipher.doFinal(outputBuffer, 0);
+        if (finalBytes > 0) {
+            outputStream.write(outputBuffer, 0, finalBytes);
         }
     }
 
