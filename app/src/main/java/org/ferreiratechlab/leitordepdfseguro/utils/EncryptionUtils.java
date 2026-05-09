@@ -78,9 +78,10 @@ public class EncryptionUtils {
             }
         }
 
-        int finalBytes = cipher.doFinal(outputBuffer, 0);
+        byte[] finalBuffer = new byte[cipher.getOutputSize(0)];
+        int finalBytes = cipher.doFinal(finalBuffer, 0);
         if (finalBytes > 0) {
-            outputStream.write(outputBuffer, 0, finalBytes);
+            outputStream.write(finalBuffer, 0, finalBytes);
         }
     }
 

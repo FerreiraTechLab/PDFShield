@@ -87,6 +87,10 @@
 -dontwarn com.github.barteksc.pdfviewer.**
 -keep class com.github.barteksc.pdfviewer.** { *; }
 
+# PdfiumAndroid / classes carregadas em runtime pelo viewer
+-dontwarn com.shockwave.pdfium.**
+-keep class com.shockwave.pdfium.** { *; }
+
 # Regras geradas automaticamente pelo R8 para dependências transitivas opcionais
 -dontwarn com.google.errorprone.annotations.Immutable
 -dontwarn java.awt.geom.AffineTransform

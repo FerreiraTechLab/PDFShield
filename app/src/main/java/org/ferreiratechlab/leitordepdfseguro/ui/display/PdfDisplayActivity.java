@@ -5,13 +5,10 @@ import androidx.annotation.RequiresApi;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
-import androidx.core.app.ActivityCompat;
-import androidx.core.content.ContextCompat;
 import androidx.core.content.FileProvider;
 
 import android.content.DialogInterface;
 import android.content.SharedPreferences;
-import android.content.pm.PackageManager;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
@@ -32,7 +29,6 @@ import com.github.barteksc.pdfviewer.listener.OnTapListener;
 import com.shockwave.pdfium.PdfDocument;
 import com.shockwave.pdfium.PdfPasswordException;
 import com.shockwave.pdfium.PdfiumCore;
-import android.Manifest;
 import android.view.MotionEvent;
 import org.ferreiratechlab.leitordepdfseguro.R;
 import org.ferreiratechlab.leitordepdfseguro.utils.EncryptionUtils;
@@ -43,7 +39,6 @@ import java.util.Locale;
 
 public class PdfDisplayActivity extends AppCompatActivity {
 
-    private static final int YOUR_PERMISSIONS_REQUEST_READ_EXTERNAL_STORAGE = 123;
     private PDFView pdfView;
     private TextView pageIndicator;
     private SeekBar seekBar;
@@ -77,15 +72,13 @@ public class PdfDisplayActivity extends AppCompatActivity {
         seekBar = findViewById(R.id.seekBar);
         controlsContainer = findViewById(R.id.controlsContainer);
 
-        if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE)
-                != PackageManager.PERMISSION_GRANTED) {
-            ActivityCompat.requestPermissions(this,
-                    new String[]{Manifest.permission.READ_EXTERNAL_STORAGE, Manifest.permission.MANAGE_EXTERNAL_STORAGE},
-                    YOUR_PERMISSIONS_REQUEST_READ_EXTERNAL_STORAGE);
+        String extraPdfPath = getIntent().getStringExtra("pdfPath");
+        if (extraPdfPath != null && !extraPdfPath.isEmpty()) {
+            pdfPath = extraPdfPath;
+        } else {
+            File open = new File(getCacheDir(), "DecryptedPDFs");
+            pdfPath = new File(open, "temp.pdf").getAbsolutePath();
         }
-        
-        File open = new File(getCacheDir(), "DecryptedPDFs");
-        pdfPath = new File(open, "temp.pdf").getAbsolutePath();
         sharedPreferences = getSharedPreferences("MySharedPref", MODE_PRIVATE);
 
         seekBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {

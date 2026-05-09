@@ -524,6 +524,7 @@ public class MainActivity extends AppCompatActivity {
         progressDialog.setCancelable(false);
         progressDialog.show();
         new Thread(() -> {
+            File tempFile = null;
             try {
                 String finalFilePath = filePath.startsWith("file:/") ? filePath.substring(6) : filePath;
 
@@ -537,20 +538,25 @@ public class MainActivity extends AppCompatActivity {
                     throw new IOException(getString(R.string.file_not_found, encryptedFile.getAbsolutePath()));
                 }
 
-                File tempFile = new File(directory.getPath(), "temp.pdf");
+                tempFile = File.createTempFile("decrypted_", ".pdf", directory);
 
                 EncryptionUtils.decryptFile(this, encryptedFile, tempFile);
+                File finalTempFile = tempFile;
                 runOnUiThread(() -> {
                     progressDialog.dismiss();
-                    if (tempFile.exists()) {
+                    if (finalTempFile.exists()) {
                         Toast.makeText(this, R.string.pdf_decrypted_success, Toast.LENGTH_SHORT).show();
-                        openPdfFile(tempFile.getPath());
+                        openPdfFile(finalTempFile.getPath());
                     } else {
                         Toast.makeText(this, R.string.pdf_decryption_error, Toast.LENGTH_SHORT).show();
                     }
                 });
 
-            } catch (Exception e) {
+            } catch (Throwable throwable) {
+                if (tempFile != null && tempFile.exists()) {
+                    EncryptionUtils.secureDelete(tempFile);
+                }
+                LoggingUtils.logError("decryptPdf", throwable.getClass().getSimpleName());
                 runOnUiThread(() -> {
                     progressDialog.dismiss();
                     Toast.makeText(MainActivity.this, R.string.pdf_decryption_error, Toast.LENGTH_SHORT).show();
@@ -562,6 +568,7 @@ public class MainActivity extends AppCompatActivity {
 
     private void openPdfFile(String filePath) {
         Intent intent = new Intent(MainActivity.this, PdfDisplayActivity.class);
+        intent.putExtra("pdfPath", filePath);
         startActivity(intent);
     }
 
