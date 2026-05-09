@@ -87,6 +87,16 @@
 -dontwarn com.github.barteksc.pdfviewer.**
 -keep class com.github.barteksc.pdfviewer.** { *; }
 
+# Regras geradas automaticamente pelo R8 para dependências transitivas opcionais
+-dontwarn com.google.errorprone.annotations.Immutable
+-dontwarn java.awt.geom.AffineTransform
+-dontwarn java.awt.geom.GeneralPath
+-dontwarn java.awt.geom.PathIterator
+-dontwarn java.awt.geom.Point2D$Float
+-dontwarn java.awt.geom.Point2D
+-dontwarn java.awt.geom.Rectangle2D
+-dontwarn javax.annotation.concurrent.GuardedBy
+
 # ============================================================
 # VERBOSE (debug purpose only; remove in production)
 # ============================================================
