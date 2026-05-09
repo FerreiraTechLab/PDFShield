@@ -96,11 +96,26 @@ public class PinSetupActivity extends AppCompatActivity {
     }
 
     private void savePin(String pinStr) {
-        // TODO: Implementar PBKDF2 real para maior segurança
-        // Por enquanto, salvando de forma simples em SharedPreferences Criptografadas ou normal (para protótipo rápido)
         SharedPreferences prefs = getSharedPreferences("AuthPrefs", MODE_PRIVATE);
         prefs.edit().putString("AppPin", pinStr).apply();
-        
+
+        // Pergunta se deseja vincular biometria
+        androidx.appcompat.app.AlertDialog.Builder builder = new androidx.appcompat.app.AlertDialog.Builder(this, R.style.CustomDialogTheme);
+        builder.setTitle(R.string.link_biometrics);
+        builder.setMessage(R.string.link_biometrics_msg);
+        builder.setPositiveButton(R.string.yes, (dialog, which) -> {
+            prefs.edit().putBoolean("UseBiometrics", true).apply();
+            goToMain();
+        });
+        builder.setNegativeButton(R.string.no, (dialog, which) -> {
+            prefs.edit().putBoolean("UseBiometrics", false).apply();
+            goToMain();
+        });
+        builder.setCancelable(false);
+        builder.show();
+    }
+
+    private void goToMain() {
         Toast.makeText(this, R.string.pin_setup_success, Toast.LENGTH_SHORT).show();
         startActivity(new Intent(this, MainActivity.class));
         finish();

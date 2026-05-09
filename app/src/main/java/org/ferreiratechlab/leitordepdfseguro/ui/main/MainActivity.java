@@ -6,8 +6,10 @@ import android.Manifest;
 import android.annotation.SuppressLint;
 import android.app.ProgressDialog;
 import android.content.ClipData;
+import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.database.Cursor;
 import android.graphics.PorterDuff;
@@ -15,12 +17,15 @@ import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
+import android.os.Handler;
 import android.provider.MediaStore;
 import android.provider.Settings;
 import android.util.Log;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.WindowManager;
+import android.widget.LinearLayout;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
@@ -28,6 +33,8 @@ import androidx.appcompat.app.ActionBarDrawerToggle;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
+import androidx.biometric.BiometricManager;
+import androidx.biometric.BiometricPrompt;
 import androidx.cardview.widget.CardView;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
@@ -64,6 +71,7 @@ import java.security.MessageDigest;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.concurrent.Executor;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -89,6 +97,7 @@ public class MainActivity extends AppCompatActivity {
 
     // No início da classe MainActivity
     private EncryptionService encryptionService;
+    private Executor executor;
 
     MenuItem menu;
 
@@ -108,6 +117,7 @@ public class MainActivity extends AppCompatActivity {
         navigationView = findViewById(R.id.nav_view);
         drawerLayout = findViewById(R.id.drawer_layout);
         encryptionService = new EncryptionService(this);
+        executor = ContextCompat.getMainExecutor(this);
         if(!checkPermissions()){
             if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE)
                     != PackageManager.PERMISSION_GRANTED) {
@@ -175,9 +185,19 @@ public class MainActivity extends AppCompatActivity {
             @SuppressLint("NonConstantResourceId")
             @Override
             public boolean onNavigationItemSelected(@NonNull MenuItem item) {
-                // Criar um construtor de AlertDialog
-                AlertDialog.Builder builder = new AlertDialog.Builder(MainActivity.this, R.style.CustomDialogTheme);
                 int id = item.getItemId();
+                if (id == R.id.nav_item_backup){
+                    authenticateAction(MainActivity.this::showBackupConfirmationDialog);
+                    drawerLayout.closeDrawer(GravityCompat.START);
+                    return true;
+                } else if (id == R.id.nav_delete_all){
+                    authenticateAction(MainActivity.this::showDeleteAllConfirmationDialog);
+                    drawerLayout.closeDrawer(GravityCompat.START);
+                    return true;
+                }
+
+                // Criar um construtor de AlertDialog para os outros itens
+                AlertDialog.Builder builder = new AlertDialog.Builder(MainActivity.this, R.style.CustomDialogTheme);
                 if (id == R.id.nav_item1){
                     // Configurar a mensagem para o item "Sobre"
                     builder.setMessage(R.string.about_msg);
@@ -191,13 +211,9 @@ public class MainActivity extends AppCompatActivity {
                 }else if(id == R.id.nav_item4){
                     // Configurar a mensagem para o item "Diretórios Ocultos"
                     builder.setMessage(R.string.privacy_msg);
-                }else if(id == R.id.nav_item_backup){
-                    showBackupConfirmationDialog();
-
                 }else{
                     // Configurar uma mensagem padrão
                     builder.setMessage(getString(R.string.in_development, item.getItemId()));
-                    System.out.print("ID clicado: "+item.getItemId());
                 }
 
                 // Criar e mostrar o AlertDialog
@@ -229,7 +245,7 @@ public class MainActivity extends AppCompatActivity {
                 intent.setData(Uri.parse("package:" + getPackageName()));
                 startActivityForResult(intent, REQUEST_CODE_MANAGE_EXTERNAL_STORAGE);
             } catch (Exception e) {
-                Intent intent = new Intent(Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION);
+                Intent intent = new Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION);
                 startActivityForResult(intent, REQUEST_CODE_MANAGE_EXTERNAL_STORAGE);
             }
         } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
@@ -273,9 +289,9 @@ public class MainActivity extends AppCompatActivity {
         String[] options = {getString(R.string.remove), getString(R.string.backup)};
         builder.setItems(options, (dialog, which) -> {
             if (which == 0) {
-                removePdfFromListAndDatabase(position);
+                authenticateAction(() -> showRemoveConfirmationDialog(position));
             } else if (which == 1) {
-                backupSingleFile(position);
+                authenticateAction(() -> backupSingleFile(position));
             }
         });
         builder.show();
@@ -555,5 +571,124 @@ public class MainActivity extends AppCompatActivity {
                 }
             }
         }
+    }
+
+    private void authenticateAction(Runnable onAuthenticated) {
+        SharedPreferences prefs = getSharedPreferences("AuthPrefs", MODE_PRIVATE);
+        boolean useBiometrics = prefs.getBoolean("UseBiometrics", false);
+        String savedPin = prefs.getString("AppPin", null);
+
+        if (useBiometrics) {
+            BiometricManager biometricManager = BiometricManager.from(this);
+            if (biometricManager.canAuthenticate(BiometricManager.Authenticators.BIOMETRIC_STRONG) == BiometricManager.BIOMETRIC_SUCCESS) {
+                BiometricPrompt biometricPrompt = new BiometricPrompt(this, executor, new BiometricPrompt.AuthenticationCallback() {
+                    @Override
+                    public void onAuthenticationSucceeded(@NonNull BiometricPrompt.AuthenticationResult result) {
+                        super.onAuthenticationSucceeded(result);
+                        runOnUiThread(onAuthenticated);
+                    }
+
+                    @Override
+                    public void onAuthenticationError(int errorCode, @NonNull CharSequence errString) {
+                        super.onAuthenticationError(errorCode, errString);
+                        // Se falhar biometria, tenta o PIN interno
+                        showPinVerificationDialog(savedPin, onAuthenticated);
+                    }
+                });
+
+                BiometricPrompt.PromptInfo promptInfo = new BiometricPrompt.PromptInfo.Builder()
+                        .setTitle(getString(R.string.biometric_auth_title))
+                        .setSubtitle(getString(R.string.auth_required_action))
+                        .setNegativeButtonText(getString(R.string.enter_pin))
+                        .build();
+
+                biometricPrompt.authenticate(promptInfo);
+                return;
+            }
+        }
+        
+        // Se não usar biometria ou sensor não disponível, pede PIN
+        showPinVerificationDialog(savedPin, onAuthenticated);
+    }
+
+    private void showPinVerificationDialog(String savedPin, Runnable onSuccess) {
+        AlertDialog.Builder builder = new AlertDialog.Builder(this, R.style.CustomDialogTheme);
+        View dialogView = getLayoutInflater().inflate(R.layout.dialog_pin_verify, null);
+        builder.setView(dialogView);
+        
+        AlertDialog dialog = builder.create();
+        
+        List<String> inputPin = new ArrayList<>();
+        View[] dots = new View[6];
+        LinearLayout dotContainer = dialogView.findViewById(R.id.dialog_dot_container);
+        for (int i = 0; i < 6; i++) {
+            dots[i] = dotContainer.getChildAt(i);
+        }
+
+        // Setup Numpad no diálogo
+        int[] buttonIds = {
+                R.id.btn0, R.id.btn1, R.id.btn2, R.id.btn3, R.id.btn4,
+                R.id.btn5, R.id.btn6, R.id.btn7, R.id.btn8, R.id.btn9
+        };
+
+        for (int id : buttonIds) {
+            dialogView.findViewById(id).setOnClickListener(v -> {
+                if (inputPin.size() < 6) {
+                    inputPin.add(((TextView) v).getText().toString());
+                    for (int i = 0; i < 6; i++) {
+                        dots[i].setBackgroundResource(i < inputPin.size() ? R.drawable.pin_dot_filled : R.drawable.pin_dot_empty);
+                    }
+                    if (inputPin.size() == 6) {
+                        if (String.join("", inputPin).equals(savedPin)) {
+                            dialog.dismiss();
+                            onSuccess.run();
+                        } else {
+                            Toast.makeText(this, R.string.invalid_pin, Toast.LENGTH_SHORT).show();
+                            inputPin.clear();
+                            for (int i = 0; i < 6; i++) {
+                                dots[i].setBackgroundResource(R.drawable.pin_dot_empty);
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        dialogView.findViewById(R.id.btn_delete).setOnClickListener(v -> {
+            if (!inputPin.isEmpty()) {
+                inputPin.remove(inputPin.size() - 1);
+                for (int i = 0; i < 6; i++) {
+                    dots[i].setBackgroundResource(i < inputPin.size() ? R.drawable.pin_dot_filled : R.drawable.pin_dot_empty);
+                }
+            }
+        });
+
+        dialog.show();
+    }
+
+    private void showDeleteAllConfirmationDialog() {
+        AlertDialog.Builder builder = new AlertDialog.Builder(this, R.style.CustomDialogTheme);
+        builder.setTitle(R.string.delete_all_title);
+        builder.setMessage(R.string.delete_all_msg);
+        builder.setPositiveButton(R.string.remove, (dialog, which) -> deleteAllPdfs());
+        builder.setNegativeButton(R.string.cancel, null);
+        builder.show();
+    }
+
+    private void deleteAllPdfs() {
+        new Thread(() -> {
+            List<Pdf> pdfs = db.pdfDao().getAll();
+            for (Pdf pdf : pdfs) {
+                File file = new File(pdf.getUri());
+                EncryptionUtils.secureDelete(file);
+            }
+            db.pdfDao().deleteAll();
+            runOnUiThread(() -> {
+                pdfDocuments.clear();
+                pdfAdapter.notifyDataSetChanged();
+                updateEmptyState();
+                Toast.makeText(MainActivity.this, R.string.all_pdfs_removed_success, Toast.LENGTH_SHORT).show();
+            });
+        }).start();
     }
 }

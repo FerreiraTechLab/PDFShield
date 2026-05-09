@@ -19,6 +19,13 @@
             android:id="@+id/nav_item_backup"
             android:title="@string/nav_backup"
             android:icon="@drawable/ic_backup"/>
+
+        <item
+            android:id="@+id/nav_delete_all"
+            android:title="@string/nav_delete_all"
+            android:iconTint="#FF5252"
+            android:icon="@android:drawable/ic_menu_delete" />
+
         <item
             android:id="@+id/nav_item1"
             android:icon="@drawable/baseline_error_24"

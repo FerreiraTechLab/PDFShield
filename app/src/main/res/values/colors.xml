@@ -11,6 +11,7 @@
     <color name="text_primary">#E1E1E1</color>
     <color name="text_secondary">#B0B0B0</color>
     <color name="surface_transparent">#CC1E1E1E</color>
+    <color name="danger_red">#FF5252</color>
 
     <!-- Legacy/Other -->
     <color name="startColor">#1A237E</color>

@@ -41,11 +41,12 @@ public class EncryptionUtils {
             fileOutputStream.write(iv);
 
             try (CipherOutputStream cipherOutputStream = new CipherOutputStream(fileOutputStream, cipher)) {
-                byte[] buffer = new byte[8192];
+                byte[] buffer = new byte[65536]; // Aumentado para 64KB para melhor performance com imagens
                 int bytesRead;
                 while ((bytesRead = inputStream.read(buffer)) != -1) {
                     cipherOutputStream.write(buffer, 0, bytesRead);
                 }
+                cipherOutputStream.flush();
             }
         }
     }
@@ -65,14 +66,15 @@ public class EncryptionUtils {
             GCMParameterSpec spec = new GCMParameterSpec(TAG_BIT_LENGTH, iv);
             cipher.init(Cipher.DECRYPT_MODE, secretKey, spec);
 
-            try (OutputStream outputStream = new FileOutputStream(outputFile);
+            try (OutputStream fileOutputStream = new FileOutputStream(outputFile);
                  CipherInputStream cipherInputStream = new CipherInputStream(inputStream, cipher)) {
                 
-                byte[] buffer = new byte[8192];
+                byte[] buffer = new byte[65536]; // Aumentado para 64KB
                 int bytesRead;
                 while ((bytesRead = cipherInputStream.read(buffer)) != -1) {
-                    outputStream.write(buffer, 0, bytesRead);
+                    fileOutputStream.write(buffer, 0, bytesRead);
                 }
+                fileOutputStream.flush();
             }
         }
     }

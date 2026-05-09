@@ -19,9 +19,10 @@
     <string name="nav_why">Por que Criptografar?</string>
     <string name="nav_privacy">Privacidade</string>
     <string name="nav_backup">Backup Externo</string>
+    <string name="nav_delete_all">Excluir Todos os Arquivos</string>
     <string name="nav_about">Sobre o App</string>
     <string name="reader_title">Leitor de PDF</string>
-    <string name="app_version">Versão 1.4</string>
+    <string name="app_version">Versão 1.5</string>
 
     <!-- Novas Strings para tarefas e diálogos -->
     <string name="encrypting_pdfs">Criptografando PDFs...</string>
@@ -34,7 +35,7 @@
     <string name="remove">Remover</string>
     <string name="backup">Backup</string>
     <string name="remove_pdf_title">Remover PDF</string>
-    <string name="remove_pdf_msg">Deseja remover este PDF da lista?</string>
+    <string name="remove_pdf_msg">Deseja remover este PDF da lista? O arquivo original será sobrescrito com zeros e será IMPOSSÍVEL de recuperar.</string>
     <string name="security_warning_title">Aviso de Segurança</string>
     <string name="backup_warning_msg">Realizar um backup vai descriptografar seus arquivos e deixá-los expostos. Deseja continuar?</string>
     <string name="backup_progress">Realizando Backup...</string>
@@ -42,6 +43,10 @@
     <string name="backup_success_single">Backup realizado com sucesso</string>
     <string name="backup_error">Erro ao realizar o backup</string>
     <string name="pdf_removed_success">PDF removido com sucesso</string>
+    <string name="all_pdfs_removed_success">Todos os PDFs foram removidos com sucesso</string>
+    <string name="delete_all_title">Excluir Todos os PDFs</string>
+    <string name="delete_all_msg">Tem certeza que deseja excluir TODOS os PDFs criptografados? Esta ação irá sobrescrever os arquivos com zeros e eles serão IMPOSSÍVEIS de recuperar.</string>
+    <string name="auth_required_action">Autenticação necessária para realizar esta ação</string>
     <string name="existing_file_title">Arquivo Existente</string>
     <string name="overwrite_msg">O arquivo \'%s\' já existe. Deseja sobrescrevê-lo?</string>
     <string name="overwrite">Sobrescrever</string>
@@ -57,4 +62,18 @@
     <string name="device_security_required">Configuração de segurança do dispositivo necessária. Vá para Configurações.</string>
     <string name="auth_failed_device">Falha na autenticação com credenciais do dispositivo</string>
     <string name="auth_failed_biometric">Falha na autenticação biométrica</string>
+    <string name="biometric_invalidated">Digitais alteradas. Por segurança, autentique-se com seu PIN.</string>
+
+    <string name="set_up_pin">Definir PIN</string>
+    <string name="pin_setup_msg">Crie um PIN de 6 dígitos para proteger seu PDF Shield</string>
+    <string name="confirm_pin">Confirmar PIN</string>
+    <string name="pin_mismatch">Os PINs não coincidem. Tente novamente.</string>
+    <string name="enter_pin">Digitar PIN</string>
+    <string name="invalid_pin">PIN incorreto. Tente novamente.</string>
+    <string name="pin_setup_success">PIN definido com sucesso</string>
+    <string name="link_biometrics">Vincular Biometria</string>
+    <string name="link_biometrics_msg">Deseja usar sua digital para desbloquear o app? (Você ainda precisará do PIN se a biometria falhar)</string>
+    <string name="yes">Sim</string>
+    <string name="no">Não</string>
+    <string name="biometric_toggle_label">Entrar com Digital</string>
 </resources>

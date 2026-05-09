@@ -11,12 +11,12 @@
         android:id="@+id/logo_shield"
         android:layout_width="120dp"
         android:layout_height="120dp"
-        android:layout_marginTop="80dp"
-        android:src="@drawable/baseline_enhanced_encryption_24"
+        android:src="@mipmap/ic_launcher"
         app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
-        app:tint="@color/accent_cyan" />
+        android:contentDescription="@string/app_name" />
 
     <TextView
         android:id="@+id/welcome_message"
@@ -32,63 +32,61 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@id/logo_shield" />
 
-    <TextView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="@string/welcome_subtitle"
-        android:textColor="@color/text_secondary"
-        android:textSize="14sp"
-        app:layout_constraintTop_toBottomOf="@id/welcome_message"
+    <ProgressBar
+        android:id="@+id/loading_bar"
+        android:layout_width="40dp"
+        android:layout_height="40dp"
+        android:layout_marginBottom="48dp"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        android:indeterminateTint="@color/accent_cyan" />
+
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/authenticate_button"
+        style="@style/Widget.Material3.Button.TonalButton"
+        android:layout_width="200dp"
+        android:layout_height="60dp"
+        android:layout_marginBottom="48dp"
+        android:text="@string/auth_button"
+        android:textColor="@color/white"
+        android:visibility="gone"
+        app:cornerRadius="16dp"
+        app:backgroundTint="@color/primary_security"
+        app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent" />
 
-    <androidx.cardview.widget.CardView
-        android:id="@+id/auth_card"
-        android:layout_width="match_parent"
+    <LinearLayout
+        android:id="@+id/biometric_toggle_container"
+        android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_margin="32dp"
-        app:cardCornerRadius="24dp"
-        app:cardBackgroundColor="#33FFFFFF"
-        app:cardElevation="0dp"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/welcome_message"
-        app:layout_constraintVertical_bias="0.7">
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:layout_marginBottom="24dp"
+        android:paddingHorizontal="16dp"
+        android:paddingVertical="8dp"
+        android:background="@drawable/button_background"
+        android:backgroundTint="#1AFFFFFF"
+        android:visibility="gone"
+        app:layout_constraintBottom_toTopOf="@id/authenticate_button"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent">
 
-        <LinearLayout
-            android:layout_width="match_parent"
+        <TextView
+            android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:orientation="vertical"
-            android:padding="32dp"
-            android:gravity="center">
+            android:text="@string/biometric_toggle_label"
+            android:textColor="@color/white"
+            android:textSize="14sp"
+            android:layout_marginEnd="12dp" />
 
-            <ImageView
-                android:id="@+id/fingerprint_icon"
-                android:layout_width="80dp"
-                android:layout_height="80dp"
-                android:src="@drawable/ic_fingerprint"
-                app:tint="@color/white" />
-
-            <TextView
-                android:id="@+id/fingerprint_text"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="16dp"
-                android:text="@string/waiting_for_fingerprint"
-                android:textColor="@color/white"
-                android:textSize="16sp" />
-
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/authenticate_button"
-                style="@style/Widget.Material3.Button.TonalButton"
-                android:layout_width="match_parent"
-                android:layout_height="60dp"
-                android:layout_marginTop="24dp"
-                android:text="@string/auth_button"
-                android:textColor="@color/white"
-                app:cornerRadius="16dp"
-                app:backgroundTint="@color/primary_security" />
-
-        </LinearLayout>
-    </androidx.cardview.widget.CardView>
+        <androidx.appcompat.widget.SwitchCompat
+            android:id="@+id/biometric_switch"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            app:thumbTint="@color/accent_cyan"
+            app:trackTint="@color/text_secondary" />
+    </LinearLayout>
 
 </androidx.constraintlayout.widget.ConstraintLayout>

@@ -19,9 +19,10 @@
     <string name="nav_why">Why Encrypt?</string>
     <string name="nav_privacy">Privacy</string>
     <string name="nav_backup">External Backup</string>
+    <string name="nav_delete_all">Delete All Files</string>
     <string name="nav_about">About the App</string>
     <string name="reader_title">PDF Reader</string>
-    <string name="app_version">Version 1.4</string>
+    <string name="app_version">Version 1.5</string>
 
     <!-- New Strings for tasks and dialogs -->
     <string name="encrypting_pdfs">Encrypting PDFs...</string>
@@ -34,7 +35,7 @@
     <string name="remove">Remove</string>
     <string name="backup">Backup</string>
     <string name="remove_pdf_title">Remove PDF</string>
-    <string name="remove_pdf_msg">Do you want to remove this PDF from the list?</string>
+    <string name="remove_pdf_msg">Do you want to remove this PDF from the list? The original file will be overwritten with zeros and will be IMPOSSIBLE to recover.</string>
     <string name="security_warning_title">Security Warning</string>
     <string name="backup_warning_msg">Performing a backup will decrypt your files and leave them exposed. Do you want to continue?</string>
     <string name="backup_progress">Performing Backup...</string>
@@ -42,6 +43,10 @@
     <string name="backup_success_single">Backup performed successfully</string>
     <string name="backup_error">Error performing backup</string>
     <string name="pdf_removed_success">PDF removed successfully</string>
+    <string name="all_pdfs_removed_success">All PDFs removed successfully</string>
+    <string name="delete_all_title">Delete All PDFs</string>
+    <string name="delete_all_msg">Are you sure you want to delete ALL encrypted PDFs? This action will overwrite files with zeros and they will be IMPOSSIBLE to recover.</string>
+    <string name="auth_required_action">Authentication required to perform this action</string>
     <string name="existing_file_title">Existing File</string>
     <string name="overwrite_msg">The file \'%s\' already exists. Do you want to overwrite it?</string>
     <string name="overwrite">Overwrite</string>
@@ -57,4 +62,18 @@
     <string name="device_security_required">Device security setup required. Go to Settings.</string>
     <string name="auth_failed_device">Authentication with device credentials failed</string>
     <string name="auth_failed_biometric">Biometric authentication failed</string>
+    <string name="biometric_invalidated">Fingerprints changed. Please re-authenticate with your PIN for safety.</string>
+
+    <string name="set_up_pin">Set up PIN</string>
+    <string name="pin_setup_msg">Create a 6-digit PIN to protect your PDF Shield</string>
+    <string name="confirm_pin">Confirm PIN</string>
+    <string name="pin_mismatch">PINs do not match. Try again.</string>
+    <string name="enter_pin">Enter PIN</string>
+    <string name="invalid_pin">Incorrect PIN. Try again.</string>
+    <string name="pin_setup_success">PIN set up successfully</string>
+    <string name="link_biometrics">Link Biometrics</string>
+    <string name="link_biometrics_msg">Do you want to use your fingerprint to unlock the app? (You will still need your PIN if biometrics fail)</string>
+    <string name="yes">Yes</string>
+    <string name="no">No</string>
+    <string name="biometric_toggle_label">Enable Fingerprint Login</string>
 </resources>

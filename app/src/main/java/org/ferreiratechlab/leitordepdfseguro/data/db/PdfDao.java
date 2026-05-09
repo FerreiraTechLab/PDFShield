@@ -27,5 +27,8 @@ public interface PdfDao {
 
     @Delete
     void delete(Pdf pdf);
+
+    @Query("DELETE FROM Pdf")
+    void deleteAll();
 }
 
