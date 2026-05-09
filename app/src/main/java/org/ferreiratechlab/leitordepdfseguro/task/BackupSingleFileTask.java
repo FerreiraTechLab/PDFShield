@@ -7,6 +7,7 @@ import android.os.AsyncTask;
 import android.os.Environment;
 import android.widget.Toast;
 
+import org.ferreiratechlab.leitordepdfseguro.R;
 import org.ferreiratechlab.leitordepdfseguro.utils.EncryptionUtils;
 
 import java.io.File;
@@ -23,8 +24,8 @@ public class BackupSingleFileTask extends AsyncTask<Void, Void, Boolean> {
 
     @Override
     protected void onPreExecute() {
-        progressDialog = new ProgressDialog(context);
-        progressDialog.setMessage("Realizando backup do PDF...");
+        progressDialog = new ProgressDialog(context, R.style.CustomDialogTheme);
+        progressDialog.setMessage(context.getString(R.string.backup_progress));
         progressDialog.setCancelable(false);
         progressDialog.show();
     }
@@ -60,9 +61,9 @@ public class BackupSingleFileTask extends AsyncTask<Void, Void, Boolean> {
     protected void onPostExecute(Boolean result) {
         progressDialog.dismiss();
         if (result) {
-            Toast.makeText(context, "Backup realizado com sucesso", Toast.LENGTH_SHORT).show();
+            Toast.makeText(context, R.string.backup_success_single, Toast.LENGTH_SHORT).show();
         } else {
-            Toast.makeText(context, "Erro ao realizar o backup", Toast.LENGTH_SHORT).show();
+            Toast.makeText(context, R.string.backup_error, Toast.LENGTH_SHORT).show();
         }
     }
 }

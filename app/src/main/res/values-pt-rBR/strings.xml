@@ -1,0 +1,60 @@
+<resources>
+    <string name="app_name">PDF Shield</string>
+    <string name="add_pdf">Adicionar</string>
+    <string name="navigation_drawer_open">Abrir menu de navegação</string>
+    <string name="navigation_drawer_close">Fechar menu de navegação</string>
+    <string name="fingerprint_icon">Ícone de impressão digital</string>
+    <string name="waiting_for_fingerprint">Autenticação necessária</string>
+    <string name="cancel">Cancelar</string>
+
+    <string name="welcome_title">PDF SHIELD</string>
+    <string name="welcome_subtitle">Sua biblioteca segura</string>
+    <string name="auth_button">ENTRAR</string>
+    <string name="protected_file">Arquivo Protegido</string>
+    <string name="password_dialog_msg">Este PDF exige uma senha para ser visualizado.</string>
+    <string name="password_hint">Senha do PDF</string>
+    <string name="ok">OK</string>
+    <string name="no_pdfs">Nenhum PDF encontrado</string>
+    <string name="nav_tips">Dicas de Segurança</string>
+    <string name="nav_why">Por que Criptografar?</string>
+    <string name="nav_privacy">Privacidade</string>
+    <string name="nav_backup">Backup Externo</string>
+    <string name="nav_about">Sobre o App</string>
+    <string name="reader_title">Leitor de PDF</string>
+    <string name="app_version">Versão 1.3</string>
+
+    <!-- Novas Strings para tarefas e diálogos -->
+    <string name="encrypting_pdfs">Criptografando PDFs...</string>
+    <string name="decrypting_pdf">Descriptografando PDF...</string>
+    <string name="pdf_encrypted_success">PDFs criptografados com sucesso</string>
+    <string name="pdf_encryption_error">Erro ao criptografar PDFs</string>
+    <string name="pdf_decrypted_success">PDF descriptografado com sucesso</string>
+    <string name="pdf_decryption_error">Erro ao descriptografar o PDF</string>
+    <string name="pdf_options">Opções do PDF</string>
+    <string name="remove">Remover</string>
+    <string name="backup">Backup</string>
+    <string name="remove_pdf_title">Remover PDF</string>
+    <string name="remove_pdf_msg">Deseja remover este PDF da lista?</string>
+    <string name="security_warning_title">Aviso de Segurança</string>
+    <string name="backup_warning_msg">Realizar um backup vai descriptografar seus arquivos e deixá-los expostos. Deseja continuar?</string>
+    <string name="backup_progress">Realizando Backup...</string>
+    <string name="backup_success">Backup concluído com sucesso.\nOs backups foram salvos em: %s</string>
+    <string name="backup_success_single">Backup realizado com sucesso</string>
+    <string name="backup_error">Erro ao realizar o backup</string>
+    <string name="pdf_removed_success">PDF removido com sucesso</string>
+    <string name="existing_file_title">Arquivo Existente</string>
+    <string name="overwrite_msg">O arquivo \'%s\' já existe. Deseja sobrescrevê-lo?</string>
+    <string name="overwrite">Sobrescrever</string>
+    <string name="file_not_found">Arquivo não encontrado: %s</string>
+    <string name="wrong_password">Senha incorreta</string>
+    <string name="about_msg">Este aplicativo de leitura de PDF seguro foi criado para proporcionar uma maior segurança ao visualizar seus documentos em formato PDF. Com recursos avançados de criptografia e a possibilidade de armazenar arquivos em diretórios ocultos, buscamos garantir a sua privacidade.</string>
+    <string name="tips_msg">Para aprimorar sua privacidade, recomendamos que você use a função de criptografia para seus documentos em PDF. Além disso, procure guardar seus documentos mais sensíveis em diretórios ocultos. Lembre-se de fazer o backup regularmente.</string>
+    <string name="why_encrypt_msg">A criptografia de seus PDFs é crucial para garantir que somente as pessoas autorizadas possam acessá-los. Isso é especialmente importante se você compartilha seu dispositivo com outras pessoas ou se seus arquivos forem sensíveis, como documentos de negócios ou pessoais.</string>
+    <string name="privacy_msg">Diretórios ocultos são uma excelente maneira de adicionar uma camada adicional de segurança para seus arquivos. Esses diretórios não são facilmente acessíveis a menos que você saiba onde estão, tornando-os perfeitos para armazenar arquivos sensíveis.</string>
+    <string name="in_development">Este aplicativo está em desenvolvimento: %d</string>
+    <string name="biometric_auth_title">Autenticação Biométrica</string>
+    <string name="biometric_auth_subtitle">Autentique-se para acessar os PDFs</string>
+    <string name="device_security_required">Configuração de segurança do dispositivo necessária. Vá para Configurações.</string>
+    <string name="auth_failed_device">Falha na autenticação com credenciais do dispositivo</string>
+    <string name="auth_failed_biometric">Falha na autenticação biométrica</string>
+</resources>

@@ -1,59 +1,42 @@
 package org.ferreiratechlab.leitordepdfseguro.utils;
 
+import android.security.keystore.KeyGenParameterSpec;
+import android.security.keystore.KeyProperties;
+
+import java.security.KeyStore;
+
 import javax.crypto.KeyGenerator;
 import javax.crypto.SecretKey;
-import javax.crypto.spec.SecretKeySpec;
-import android.util.Base64;
-import android.content.Context;
-import android.content.SharedPreferences;
-import android.widget.Toast;
 
 public class KeyManagerUtils {
 
-    private static final String SHARED_PREF_NAME = "CryptoKeyPrefs";
-    private static final String KEY_NAME = "CryptoKey";
+    private static final String ANDROID_KEYSTORE = "AndroidKeyStore";
+    private static final String KEY_ALIAS = "PDFShieldEncryptionKey_V2";
 
-    public static SecretKey getOrCreateKey(Context context) {
-        SharedPreferences sharedPreferences = context.getSharedPreferences(SHARED_PREF_NAME, Context.MODE_PRIVATE);
-        String encryptedKeyString = sharedPreferences.getString(KEY_NAME, null);
+    /**
+     * Obtém ou cria uma chave AES no Android Keystore.
+     * A chave é armazenada de forma segura em hardware (TEE/SE) quando disponível.
+     */
+    public static SecretKey getOrCreateKey() throws Exception {
+        KeyStore keyStore = KeyStore.getInstance(ANDROID_KEYSTORE);
+        keyStore.load(null);
 
-        SecretKey secretKey;
-        if (encryptedKeyString == null) {
-            try {
-                KeyGenerator keyGenerator = KeyGenerator.getInstance("AES");
-                keyGenerator.init(256);
-                secretKey = keyGenerator.generateKey();
-                String encodedKey = Base64.encodeToString(secretKey.getEncoded(), Base64.DEFAULT);
-
-                // Save the key in SharedPreferences
-                sharedPreferences.edit().putString(KEY_NAME, encodedKey).apply();
-                //Toast.makeText(context, "Chave de segurança gerada", Toast.LENGTH_SHORT).show();
-            } catch (Exception e) {
-                e.printStackTrace();
-                return null;
-            }
+        if (keyStore.containsAlias(KEY_ALIAS)) {
+            KeyStore.SecretKeyEntry secretKeyEntry = (KeyStore.SecretKeyEntry) keyStore.getEntry(KEY_ALIAS, null);
+            return secretKeyEntry.getSecretKey();
         } else {
-            // Decode the existing key
-            byte[] decodedKey = Base64.decode(encryptedKeyString, Base64.DEFAULT);
-            secretKey = new SecretKeySpec(decodedKey, 0, decodedKey.length, "AES");
-            //Toast.makeText(context, "Chave de segurança resgatada", Toast.LENGTH_SHORT).show();
-        }
-        return secretKey;
-    }
+            KeyGenerator keyGenerator = KeyGenerator.getInstance(KeyProperties.KEY_ALGORITHM_AES, ANDROID_KEYSTORE);
+            KeyGenParameterSpec keyGenParameterSpec = new KeyGenParameterSpec.Builder(
+                    KEY_ALIAS,
+                    KeyProperties.PURPOSE_ENCRYPT | KeyProperties.PURPOSE_DECRYPT)
+                    .setBlockModes(KeyProperties.BLOCK_MODE_GCM)
+                    .setEncryptionPaddings(KeyProperties.ENCRYPTION_PADDING_NONE)
+                    .setKeySize(256)
+                    .setRandomizedEncryptionRequired(false) // Permite fornecer o IV manualmente
+                    .build();
 
-    public static SecretKey getKeyFromSharedPreferences(Context context) {
-        SharedPreferences sharedPreferences = context.getSharedPreferences(SHARED_PREF_NAME, Context.MODE_PRIVATE);
-        String encryptedKeyString = sharedPreferences.getString(KEY_NAME, null);
-
-        SecretKey secretKey;
-        if (encryptedKeyString == null) {
-            //Toast.makeText(context, "Chave de segurança inexistente", Toast.LENGTH_SHORT).show();
-            return null; // Key doesn't exist
-        } else {
-            // Decode the existing key
-            byte[] decodedKey = Base64.decode(encryptedKeyString, Base64.DEFAULT);
-            secretKey = new SecretKeySpec(decodedKey, 0, decodedKey.length, "AES");
+            keyGenerator.init(keyGenParameterSpec);
+            return keyGenerator.generateKey();
         }
-        return secretKey;
     }
 }

@@ -4,62 +4,91 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:background="@drawable/welcome_bg"
     tools:context="org.ferreiratechlab.leitordepdfseguro.ui.welcome.WelcomeActivity">
+
+    <ImageView
+        android:id="@+id/logo_shield"
+        android:layout_width="120dp"
+        android:layout_height="120dp"
+        android:layout_marginTop="80dp"
+        android:src="@drawable/baseline_enhanced_encryption_24"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:tint="@color/accent_cyan" />
 
     <TextView
         android:id="@+id/welcome_message"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginTop="204dp"
-        android:text="Bem-vindo ao PDF Shield"
-        android:textSize="24sp"
-        android:textStyle="bold"
+        android:layout_marginTop="24dp"
+        android:text="@string/welcome_title"
+        android:letterSpacing="0.1"
+        android:textColor="@color/white"
+        android:textSize="28sp"
+        android:fontFamily="sans-serif-black"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintHorizontal_bias="0.498"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent" />
+        app:layout_constraintTop_toBottomOf="@id/logo_shield" />
 
-    <RelativeLayout
-        android:id="@+id/auth_layout"
+    <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_margin="16dp"
+        android:text="@string/welcome_subtitle"
+        android:textColor="@color/text_secondary"
+        android:textSize="14sp"
         app:layout_constraintTop_toBottomOf="@id/welcome_message"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintEnd_toEndOf="parent" />
+
+    <androidx.cardview.widget.CardView
+        android:id="@+id/auth_card"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_margin="32dp"
+        app:cardCornerRadius="24dp"
+        app:cardBackgroundColor="#33FFFFFF"
+        app:cardElevation="0dp"
         app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintVertical_bias="0.2">
+        app:layout_constraintTop_toBottomOf="@id/welcome_message"
+        app:layout_constraintVertical_bias="0.7">
 
-        <ImageView
-            android:id="@+id/fingerprint_icon"
-            android:layout_width="100dp"
-            android:layout_height="100dp"
-            android:layout_centerHorizontal="true"
-            android:layout_marginBottom="24dp"
-            android:contentDescription="@string/fingerprint_icon"
-            android:src="@drawable/ic_fingerprint" />
-
-        <TextView
-            android:id="@+id/fingerprint_text"
-            android:layout_width="wrap_content"
+        <LinearLayout
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_below="@id/fingerprint_icon"
-            android:layout_centerHorizontal="true"
-            android:layout_marginTop="16dp"
-            android:layout_marginBottom="32dp"
-            android:text="@string/waiting_for_fingerprint"
-            android:textSize="18sp" />
+            android:orientation="vertical"
+            android:padding="32dp"
+            android:gravity="center">
 
-        <Button
-            android:id="@+id/authenticate_button"
-            android:layout_width="200dp"
-            android:layout_height="wrap_content"
-            android:text="@string/cancel"
-            android:textColor="@color/white"
-            android:background="@drawable/button_background"
-            android:layout_below="@id/fingerprint_text"
-            android:layout_centerHorizontal="true" />
+            <ImageView
+                android:id="@+id/fingerprint_icon"
+                android:layout_width="80dp"
+                android:layout_height="80dp"
+                android:src="@drawable/ic_fingerprint"
+                app:tint="@color/white" />
 
-    </RelativeLayout>
+            <TextView
+                android:id="@+id/fingerprint_text"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:text="@string/waiting_for_fingerprint"
+                android:textColor="@color/white"
+                android:textSize="16sp" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/authenticate_button"
+                style="@style/Widget.Material3.Button.TonalButton"
+                android:layout_width="match_parent"
+                android:layout_height="60dp"
+                android:layout_marginTop="24dp"
+                android:text="@string/auth_button"
+                android:textColor="@color/white"
+                app:cornerRadius="16dp"
+                app:backgroundTint="@color/primary_security" />
+
+        </LinearLayout>
+    </androidx.cardview.widget.CardView>
 
 </androidx.constraintlayout.widget.ConstraintLayout>

@@ -1,9 +1,60 @@
 <resources>
     <string name="app_name">PDF Shield</string>
-    <string name="add_pdf">Novos PDFs</string>
-    <string name="navigation_drawer_open">Abrir menu de navegação</string>
-    <string name="navigation_drawer_close">Fechar menu de navegação</string>
-    <string name="fingerprint_icon">Ícone de impressão digital</string>
-    <string name="waiting_for_fingerprint">Aguardando impressão digital</string>
-    <string name="cancel">Autenticar</string>
+    <string name="add_pdf">Add</string>
+    <string name="navigation_drawer_open">Open navigation drawer</string>
+    <string name="navigation_drawer_close">Close navigation drawer</string>
+    <string name="fingerprint_icon">Fingerprint icon</string>
+    <string name="waiting_for_fingerprint">Authentication required</string>
+    <string name="cancel">Cancel</string>
+
+    <string name="welcome_title">PDF SHIELD</string>
+    <string name="welcome_subtitle">Your secure library</string>
+    <string name="auth_button">ENTER</string>
+    <string name="protected_file">Protected File</string>
+    <string name="password_dialog_msg">This PDF requires a password to be viewed.</string>
+    <string name="password_hint">PDF Password</string>
+    <string name="ok">OK</string>
+    <string name="no_pdfs">No PDFs found</string>
+    <string name="nav_tips">Security Tips</string>
+    <string name="nav_why">Why Encrypt?</string>
+    <string name="nav_privacy">Privacy</string>
+    <string name="nav_backup">External Backup</string>
+    <string name="nav_about">About the App</string>
+    <string name="reader_title">PDF Reader</string>
+    <string name="app_version">Version 1.3</string>
+
+    <!-- New Strings for tasks and dialogs -->
+    <string name="encrypting_pdfs">Encrypting PDFs...</string>
+    <string name="decrypting_pdf">Decrypting PDF...</string>
+    <string name="pdf_encrypted_success">PDFs encrypted successfully</string>
+    <string name="pdf_encryption_error">Error encrypting PDFs</string>
+    <string name="pdf_decrypted_success">PDF decrypted successfully</string>
+    <string name="pdf_decryption_error">Error decrypting PDF</string>
+    <string name="pdf_options">PDF Options</string>
+    <string name="remove">Remove</string>
+    <string name="backup">Backup</string>
+    <string name="remove_pdf_title">Remove PDF</string>
+    <string name="remove_pdf_msg">Do you want to remove this PDF from the list?</string>
+    <string name="security_warning_title">Security Warning</string>
+    <string name="backup_warning_msg">Performing a backup will decrypt your files and leave them exposed. Do you want to continue?</string>
+    <string name="backup_progress">Performing Backup...</string>
+    <string name="backup_success">Backup completed successfully.\nBackups saved at: %s</string>
+    <string name="backup_success_single">Backup performed successfully</string>
+    <string name="backup_error">Error performing backup</string>
+    <string name="pdf_removed_success">PDF removed successfully</string>
+    <string name="existing_file_title">Existing File</string>
+    <string name="overwrite_msg">The file \'%s\' already exists. Do you want to overwrite it?</string>
+    <string name="overwrite">Overwrite</string>
+    <string name="file_not_found">File not found: %s</string>
+    <string name="wrong_password">Incorrect password</string>
+    <string name="about_msg">This secure PDF reader app was created to provide greater security when viewing your PDF documents. With advanced encryption features and the ability to store files in hidden directories, we seek to guarantee your privacy.</string>
+    <string name="tips_msg">To improve your privacy, we recommend that you use the encryption function for your PDF documents. Also, try to keep your most sensitive documents in hidden directories. Remember to back up regularly.</string>
+    <string name="why_encrypt_msg">Encrypting your PDFs is crucial to ensure that only authorized people can access them. This is especially important if you share your device with others or if your files are sensitive, such as business or personal documents.</string>
+    <string name="privacy_msg">Hidden directories are an excellent way to add an extra layer of security for your files. These directories are not easily accessible unless you know where they are, making them perfect for storing sensitive files.</string>
+    <string name="in_development">This app is under development: %d</string>
+    <string name="biometric_auth_title">Biometric Authentication</string>
+    <string name="biometric_auth_subtitle">Authenticate to access PDFs</string>
+    <string name="device_security_required">Device security setup required. Go to Settings.</string>
+    <string name="auth_failed_device">Authentication with device credentials failed</string>
+    <string name="auth_failed_biometric">Biometric authentication failed</string>
 </resources>

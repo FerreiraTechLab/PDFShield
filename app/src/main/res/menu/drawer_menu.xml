@@ -5,25 +5,24 @@
         <item
             android:id="@+id/nav_item2"
             android:icon="@drawable/baseline_help_24"
-            android:title="Instruções" />
+            android:title="@string/nav_tips" />
         <item
             android:id="@+id/nav_item3"
             android:icon="@drawable/baseline_enhanced_encryption_24"
-            android:title="Importância  de Criptografar os PDFs" />
+            android:title="@string/nav_why" />
         <item
             android:id="@+id/nav_item4"
             android:icon="@drawable/baseline_visibility_off_24"
-            android:title="Diretórios Ocultos" />
+            android:title="@string/nav_privacy" />
 
         <item
             android:id="@+id/nav_item_backup"
-            android:title="Backup"
+            android:title="@string/nav_backup"
             android:icon="@drawable/ic_backup"/>
         <item
             android:id="@+id/nav_item1"
             android:icon="@drawable/baseline_error_24"
-            android:title="Sobre" />
+            android:title="@string/nav_about" />
 
-        <!-- Adicione mais itens conforme necessário -->
     </group>
 </menu>

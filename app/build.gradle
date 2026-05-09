@@ -14,6 +14,9 @@ android {
         // ...
     packagingOptions {
         exclude 'META-INF/DEPENDENCIES'
+        jniLibs {
+            useLegacyPackaging = false
+        }
     }
 
 
@@ -50,7 +53,7 @@ dependencies {
     androidTestImplementation 'androidx.test.ext:junit:1.1.5'
     androidTestImplementation 'androidx.test.espresso:espresso-core:3.5.1'
     implementation 'androidx.biometric:biometric:1.2.0-alpha03'
-    implementation 'com.github.mhiew:android-pdf-viewer:3.2.0-beta.3'
+    implementation 'com.github.asadwaheed1:AndroidPdfViewer:v3.2.0-beta06'
     implementation 'androidx.security:security-crypto:1.0.0-rc03'
     implementation ('org.apache.pdfbox:pdfbox-app:2.0.24') {
         exclude group: 'commons-logging', module: 'commons-logging'

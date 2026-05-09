@@ -2,8 +2,17 @@
 <resources>
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
-    <!-- res/values/colors.xml -->
-    <color name="startColor">#FF0000</color> <!-- Vermelho -->
-    <color name="endColor">#0000FF</color>   <!-- Azul -->
 
+    <!-- Security Dark Theme Palette -->
+    <color name="background_dark">#121212</color>
+    <color name="surface_dark">#1E1E1E</color>
+    <color name="primary_security">#0D47A1</color>
+    <color name="accent_cyan">#00B8D4</color>
+    <color name="text_primary">#E1E1E1</color>
+    <color name="text_secondary">#B0B0B0</color>
+    <color name="surface_transparent">#CC1E1E1E</color>
+
+    <!-- Legacy/Other -->
+    <color name="startColor">#1A237E</color>
+    <color name="endColor">#0D47A1</color>
 </resources>

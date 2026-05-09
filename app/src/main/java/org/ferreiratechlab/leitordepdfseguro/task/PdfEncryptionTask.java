@@ -3,7 +3,6 @@ package org.ferreiratechlab.leitordepdfseguro.task;
 import android.app.ProgressDialog;
 import android.content.Context;
 import android.content.DialogInterface;
-import android.database.Cursor;
 import android.net.Uri;
 import android.os.AsyncTask;
 import android.provider.MediaStore;
@@ -11,6 +10,7 @@ import android.widget.Toast;
 
 import androidx.appcompat.app.AlertDialog;
 
+import org.ferreiratechlab.leitordepdfseguro.R;
 import org.ferreiratechlab.leitordepdfseguro.data.db.AppDatabase;
 import org.ferreiratechlab.leitordepdfseguro.data.model.Pdf;
 import org.ferreiratechlab.leitordepdfseguro.ui.main.MainActivity;
@@ -20,26 +20,37 @@ import java.io.File;
 import java.util.List;
 
 public class PdfEncryptionTask extends AsyncTask<Void, Integer, Boolean> {
+    
+    public static class EncryptionItem {
+        public final File tempFile;
+        public final Uri originalUri;
+
+        public EncryptionItem(File tempFile, Uri originalUri) {
+            this.tempFile = tempFile;
+            this.originalUri = originalUri;
+        }
+    }
+
     private Context context;
-    private List<File> filesToEncrypt;
+    private List<EncryptionItem> itemsToEncrypt;
     private AppDatabase db;
     private ProgressDialog progressDialog;
     private boolean overwriteConfirmed = false;
     private String fileToOverwrite;
     private int currentIndex = -1;
 
-    public PdfEncryptionTask(Context context, List<File> filesToEncrypt, AppDatabase db) {
+    public PdfEncryptionTask(Context context, List<EncryptionItem> itemsToEncrypt, AppDatabase db) {
         this.context = context;
-        this.filesToEncrypt = filesToEncrypt;
+        this.itemsToEncrypt = itemsToEncrypt;
         this.db = db;
     }
 
     @Override
     protected void onPreExecute() {
-        progressDialog = new ProgressDialog(context);
-        progressDialog.setMessage("Criptografando PDFs...");
+        progressDialog = new ProgressDialog(context, org.ferreiratechlab.leitordepdfseguro.R.style.CustomDialogTheme);
+        progressDialog.setMessage(context.getString(R.string.encrypting_pdfs));
         progressDialog.setProgressStyle(ProgressDialog.STYLE_HORIZONTAL);
-        progressDialog.setMax(filesToEncrypt.size());
+        progressDialog.setMax(itemsToEncrypt.size());
         progressDialog.setCancelable(false);
         progressDialog.show();
     }
@@ -47,9 +58,10 @@ public class PdfEncryptionTask extends AsyncTask<Void, Integer, Boolean> {
     @Override
     protected Boolean doInBackground(Void... voids) {
         try {
-            for (int i = 0; i < filesToEncrypt.size(); i++) {
+            for (int i = 0; i < itemsToEncrypt.size(); i++) {
                 currentIndex = i;
-                File file = filesToEncrypt.get(i);
+                EncryptionItem item = itemsToEncrypt.get(i);
+                File file = item.tempFile;
 
                 // Verificar se o PDF já existe no banco de dados
                 Pdf existingPdf = db.pdfDao().getPdfByFilename(file.getName());
@@ -81,17 +93,9 @@ public class PdfEncryptionTask extends AsyncTask<Void, Integer, Boolean> {
                 // Criptografar o arquivo temporário e salvar no arquivo criptografado
                 EncryptionUtils.encryptFile(context, file, encryptedFile);
 
-                // Apagar o arquivo original
-                String realPath = getRealPathFromURI(Uri.fromFile(file));
-                if (realPath != null) {
-                    File originalFile = new File(realPath);
-                    if (originalFile.exists()) {
-                        boolean deleted = originalFile.delete();
-                        if (!deleted) {
-                            System.out.println("Falha ao deletar arquivo: " + originalFile.getAbsolutePath());
-                        }
-                    }
-                }
+                // Apagar o arquivo original e o temporário de forma segura
+                EncryptionUtils.secureDelete(context, item.originalUri);
+                EncryptionUtils.secureDelete(item.tempFile);
 
                 // Verificar novamente se o PDF já existe no banco de dados para evitar duplicação
                 existingPdf = db.pdfDao().getPdfByFilename(file.getName());
@@ -122,37 +126,20 @@ public class PdfEncryptionTask extends AsyncTask<Void, Integer, Boolean> {
         }
     }
 
-    private String getRealPathFromURI(Uri uri) {
-        Cursor cursor = context.getContentResolver().query(uri, null, null, null, null);
-        if (cursor == null) {
-            return uri.getPath();
-        } else {
-            cursor.moveToFirst();
-            int idx = cursor.getColumnIndex(MediaStore.Images.ImageColumns.DATA);
-            return cursor.getString(idx);
-        }
-    }
-
     private void showOverwriteDialog(String fileName) {
-        AlertDialog.Builder builder = new AlertDialog.Builder(context);
-        builder.setTitle("Arquivo Existente");
-        builder.setMessage("O arquivo '" + fileName + "' já existe. Deseja sobrescrevê-lo?");
-        builder.setPositiveButton("Sobrescrever", new DialogInterface.OnClickListener() {
-            @Override
-            public void onClick(DialogInterface dialog, int which) {
-                overwriteConfirmed = true;
-                synchronized (PdfEncryptionTask.this) {
-                    PdfEncryptionTask.this.notify(); // Notificar o doInBackground que o usuário concordou
-                }
+        AlertDialog.Builder builder = new AlertDialog.Builder(context, org.ferreiratechlab.leitordepdfseguro.R.style.CustomDialogTheme);
+        builder.setTitle(R.string.existing_file_title);
+        builder.setMessage(context.getString(R.string.overwrite_msg, fileName));
+        builder.setPositiveButton(R.string.overwrite, (dialog, which) -> {
+            overwriteConfirmed = true;
+            synchronized (PdfEncryptionTask.this) {
+                PdfEncryptionTask.this.notify(); // Notificar o doInBackground que o usuário concordou
             }
         });
-        builder.setNegativeButton("Cancelar", new DialogInterface.OnClickListener() {
-            @Override
-            public void onClick(DialogInterface dialog, int which) {
-                overwriteConfirmed = false;
-                synchronized (PdfEncryptionTask.this) {
-                    PdfEncryptionTask.this.notify(); // Notificar o doInBackground que o usuário cancelou
-                }
+        builder.setNegativeButton(R.string.cancel, (dialog, which) -> {
+            overwriteConfirmed = false;
+            synchronized (PdfEncryptionTask.this) {
+                PdfEncryptionTask.this.notify(); // Notificar o doInBackground que o usuário cancelou
             }
         });
         builder.setCancelable(false);
@@ -163,10 +150,10 @@ public class PdfEncryptionTask extends AsyncTask<Void, Integer, Boolean> {
     protected void onPostExecute(Boolean result) {
         progressDialog.dismiss();
         if (result) {
-            Toast.makeText(context, "PDFs criptografados com sucesso", Toast.LENGTH_SHORT).show();
+            Toast.makeText(context, R.string.pdf_encrypted_success, Toast.LENGTH_SHORT).show();
             ((MainActivity) context).updatePdfListFromDatabase();
         } else {
-            Toast.makeText(context, "Erro ao criptografar PDFs", Toast.LENGTH_SHORT).show();
+            Toast.makeText(context, R.string.pdf_encryption_error, Toast.LENGTH_SHORT).show();
         }
     }
 }

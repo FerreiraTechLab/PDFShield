@@ -41,19 +41,13 @@ public class WelcomeActivity extends AppCompatActivity {
         executor = ContextCompat.getMainExecutor(this);
         biometricPrompt = new BiometricPrompt(this, executor, authenticationCallback);
         promptInfo = new BiometricPrompt.PromptInfo.Builder()
-                .setTitle("Autenticação Biométrica")
-                .setSubtitle("Autentique-se para acessar os PDFs")
-                .setNegativeButtonText("Cancelar")
+                .setTitle(getString(R.string.biometric_auth_title))
+                .setSubtitle(getString(R.string.biometric_auth_subtitle))
+                .setNegativeButtonText(getString(R.string.cancel))
                 .build();
         initAuthentication();
     }
 
-    @Override
-    protected void onPause() {
-        super.onPause();
-        // Fecha a atividade quando ela não está mais visível
-        finish();
-    }
     private void initAuthentication() {
         if (isBiometricAvailable()) {
             biometricPrompt.authenticate(promptInfo);
@@ -70,12 +64,14 @@ public class WelcomeActivity extends AppCompatActivity {
     private void authenticateWithDeviceCredentials() {
         KeyguardManager keyguardManager = (KeyguardManager) getSystemService(KEYGUARD_SERVICE);
         if (keyguardManager.isKeyguardSecure()) {
-            Intent intent = keyguardManager.createConfirmDeviceCredentialIntent("Autenticação Requerida", "Autentique-se para acessar os PDFs");
+            Intent intent = keyguardManager.createConfirmDeviceCredentialIntent(
+                    getString(R.string.biometric_auth_title),
+                    getString(R.string.biometric_auth_subtitle));
             if (intent != null) {
                 startActivityForResult(intent, REQUEST_CODE_DEVICE_CREDENTIAL);
             }
         } else {
-            Toast.makeText(this, "Configuração de segurança do dispositivo necessária. Vá para Configurações.", Toast.LENGTH_LONG).show();
+            Toast.makeText(this, R.string.device_security_required, Toast.LENGTH_LONG).show();
             Intent intent = new Intent(Settings.ACTION_SECURITY_SETTINGS);
             startActivity(intent);
         }
@@ -89,7 +85,7 @@ public class WelcomeActivity extends AppCompatActivity {
                 startActivity(new Intent(WelcomeActivity.this, MainActivity.class));
                 finish();
             } else {
-                Toast.makeText(this, "Falha na autenticação com credenciais do dispositivo", Toast.LENGTH_SHORT).show();
+                Toast.makeText(this, R.string.auth_failed_device, Toast.LENGTH_SHORT).show();
             }
         }
     }
@@ -105,7 +101,7 @@ public class WelcomeActivity extends AppCompatActivity {
         @Override
         public void onAuthenticationError(int errorCode, CharSequence errString) {
             super.onAuthenticationError(errorCode, errString);
-            Toast.makeText(WelcomeActivity.this, "Falha na autenticação biométrica", Toast.LENGTH_SHORT).show();
+            Toast.makeText(WelcomeActivity.this, R.string.auth_failed_biometric, Toast.LENGTH_SHORT).show();
         }
     };
 }

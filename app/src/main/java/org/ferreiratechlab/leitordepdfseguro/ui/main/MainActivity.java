@@ -39,6 +39,7 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import androidx.room.Room;
 
+import com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.google.android.material.navigation.NavigationView;
 
@@ -72,8 +73,9 @@ public class MainActivity extends AppCompatActivity {
     private static final int REQUEST_CODE_MANAGE_EXTERNAL_STORAGE = 2;
     private static final int YOUR_PERMISSIONS_REQUEST_READ_EXTERNAL_STORAGE = 123;
 
-    FloatingActionButton addPdfFab;
+    ExtendedFloatingActionButton addPdfFab;
     RecyclerView pdfRecyclerView;
+    View emptyState;
     PdfAdapter pdfAdapter;
     List<PdfDocumentWrapper> pdfDocuments = new ArrayList<>();
     private DrawerLayout drawerLayout;
@@ -96,8 +98,12 @@ public class MainActivity extends AppCompatActivity {
         getWindow().setFlags(WindowManager.LayoutParams.FLAG_SECURE, WindowManager.LayoutParams.FLAG_SECURE);
         setContentView(R.layout.activity_main);
 
+        // Limpar arquivos temporários que podem ter sobrado de uma sessão anterior (ex: crash)
+        cleanOldTempFiles();
+
         addPdfFab = findViewById(R.id.add_pdf_fab);
         pdfRecyclerView = findViewById(R.id.pdf_recycler_view);
+        emptyState = findViewById(R.id.empty_state);
         toolbar = findViewById(R.id.toolbar);
         navigationView = findViewById(R.id.nav_view);
         drawerLayout = findViewById(R.id.drawer_layout);
@@ -152,6 +158,7 @@ public class MainActivity extends AppCompatActivity {
                         pdfDocuments.add(new PdfDocumentWrapper(Uri.parse(pdf.uri), pdf.title));
                     }
                     pdfAdapter.notifyDataSetChanged();
+                    updateEmptyState();
                 });
             });
         }).start();
@@ -169,32 +176,32 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public boolean onNavigationItemSelected(@NonNull MenuItem item) {
                 // Criar um construtor de AlertDialog
-                AlertDialog.Builder builder = new AlertDialog.Builder(MainActivity.this);
+                AlertDialog.Builder builder = new AlertDialog.Builder(MainActivity.this, R.style.CustomDialogTheme);
                 int id = item.getItemId();
                 if (id == R.id.nav_item1){
                     // Configurar a mensagem para o item "Sobre"
-                    builder.setMessage("Este aplicativo de leitura de PDF seguro foi criado para proporcionar uma maior segurança ao visualizar seus documentos em formato PDF. Com recursos avançados de criptografia e a possibilidade de armazenar arquivos em diretórios ocultos, buscamos garantir a sua privacidade.");
+                    builder.setMessage(R.string.about_msg);
                 }
                 else if (id == R.id.nav_item2) {
-                    builder.setMessage("Para aprimorar sua privacidade, recomendamos que você use a função de criptografia para seus documentos em PDF. Além disso, procure guardar seus documentos mais sensíveis em diretórios ocultos. Lembre-se de fazer o backup regularmente.");
+                    builder.setMessage(R.string.tips_msg);
 
                 }else if(id == R.id.nav_item3){
-                    builder.setMessage("A criptografia de seus PDFs é crucial para garantir que somente as pessoas autorizadas possam acessá-los. Isso é especialmente importante se você compartilha seu dispositivo com outras pessoas ou se seus arquivos forem sensíveis, como documentos de negócios ou pessoais.");
+                    builder.setMessage(R.string.why_encrypt_msg);
 
                 }else if(id == R.id.nav_item4){
                     // Configurar a mensagem para o item "Diretórios Ocultos"
-                    builder.setMessage("Diretórios ocultos são uma excelente maneira de adicionar uma camada adicional de segurança para seus arquivos. Esses diretórios não são facilmente acessíveis a menos que você saiba onde estão, tornando-os perfeitos para armazenar arquivos sensíveis.");
+                    builder.setMessage(R.string.privacy_msg);
                 }else if(id == R.id.nav_item_backup){
                     showBackupConfirmationDialog();
 
                 }else{
                     // Configurar uma mensagem padrão
-                    builder.setMessage("Este aplicativo está em desenvolvimento: "+item.getItemId());
+                    builder.setMessage(getString(R.string.in_development, item.getItemId()));
                     System.out.print("ID clicado: "+item.getItemId());
                 }
 
                 // Criar e mostrar o AlertDialog
-                builder.setPositiveButton("OK", null);
+                builder.setPositiveButton(R.string.ok, null);
                 builder.show();
 
                 drawerLayout.closeDrawer(GravityCompat.START);
@@ -253,30 +260,22 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void showRemoveConfirmationDialog(final int position) {
-        AlertDialog.Builder builder = new AlertDialog.Builder(this);
-        builder.setTitle("Remover PDF");
-        builder.setMessage("Deseja remover este PDF da lista?");
-        builder.setPositiveButton("Remover", new DialogInterface.OnClickListener() {
-            @Override
-            public void onClick(DialogInterface dialog, int which) {
-                removePdfFromListAndDatabase(position);
-            }
-        });
-        builder.setNegativeButton("Cancelar", null);
+        AlertDialog.Builder builder = new AlertDialog.Builder(this, R.style.CustomDialogTheme);
+        builder.setTitle(R.string.remove_pdf_title);
+        builder.setMessage(R.string.remove_pdf_msg);
+        builder.setPositiveButton(R.string.remove, (dialog, which) -> removePdfFromListAndDatabase(position));
+        builder.setNegativeButton(R.string.cancel, null);
         builder.show();
     }
     private void showPdfLongClickOptions(int position) {
-        AlertDialog.Builder builder = new AlertDialog.Builder(this);
-        builder.setTitle("Opções do PDF");
-        String[] options = {"Remover", "Backup"};
-        builder.setItems(options, new DialogInterface.OnClickListener() {
-            @Override
-            public void onClick(DialogInterface dialog, int which) {
-                if (which == 0) {
-                    removePdfFromListAndDatabase(position);
-                } else if (which == 1) {
-                    backupSingleFile(position);
-                }
+        AlertDialog.Builder builder = new AlertDialog.Builder(this, R.style.CustomDialogTheme);
+        builder.setTitle(R.string.pdf_options);
+        String[] options = {getString(R.string.remove), getString(R.string.backup)};
+        builder.setItems(options, (dialog, which) -> {
+            if (which == 0) {
+                removePdfFromListAndDatabase(position);
+            } else if (which == 1) {
+                backupSingleFile(position);
             }
         });
         builder.show();
@@ -291,6 +290,7 @@ public class MainActivity extends AppCompatActivity {
         pdfAdapter.notifyItemRemoved(position);
         // Remover o PDF do banco de dados
         pdfViewModel.deletePdf(pdfDocumentWrapper.getTitle());
+        updateEmptyState();
         Toast.makeText(MainActivity.this, "PDF removido com sucesso", Toast.LENGTH_SHORT).show();
     }
 
@@ -320,7 +320,7 @@ public class MainActivity extends AppCompatActivity {
             }
         } else if (requestCode == REQUEST_CODE_OPEN_DOCUMENT && resultCode == RESULT_OK) {
             if (resultData != null) {
-                List<File> filesToEncrypt = new ArrayList<>();
+                List<PdfEncryptionTask.EncryptionItem> itemsToEncrypt = new ArrayList<>();
                 if (resultData.getClipData() != null) {
                     // Múltiplos arquivos selecionados
                     ClipData clipData = resultData.getClipData();
@@ -331,7 +331,7 @@ public class MainActivity extends AppCompatActivity {
                         try {
                             File tempFile = new File(getCacheDir(), filename);
                             copyContentUriToFile(uri, tempFile);
-                            filesToEncrypt.add(tempFile);
+                            itemsToEncrypt.add(new PdfEncryptionTask.EncryptionItem(tempFile, uri));
                         } catch (IOException e) {
                             e.printStackTrace();
                             Toast.makeText(this, "Erro ao copiar o arquivo: " + filename, Toast.LENGTH_SHORT).show();
@@ -345,33 +345,33 @@ public class MainActivity extends AppCompatActivity {
                     try {
                         File tempFile = new File(getCacheDir(), filename);
                         copyContentUriToFile(uri, tempFile);
-                        filesToEncrypt.add(tempFile);
+                        itemsToEncrypt.add(new PdfEncryptionTask.EncryptionItem(tempFile, uri));
                     } catch (IOException e) {
                         e.printStackTrace();
                         Toast.makeText(this, "Erro ao copiar o arquivo: " + filename, Toast.LENGTH_SHORT).show();
                     }
                 }
 
-                if (!filesToEncrypt.isEmpty()) {
-                    encryptFilesInBackground(filesToEncrypt);
+                if (!itemsToEncrypt.isEmpty()) {
+                    encryptFilesInBackground(itemsToEncrypt);
                 }
             }
         }
     }
     private void showBackupConfirmationDialog() {
-        AlertDialog.Builder builder = new AlertDialog.Builder(this);
-        builder.setTitle("Aviso de Segurança");
-        builder.setMessage("Realizar um backup vai descriptografar seus arquivos e deixá-los expostos. Deseja continuar?");
-        builder.setPositiveButton("OK", (dialog, which) -> {
+        AlertDialog.Builder builder = new AlertDialog.Builder(this, R.style.CustomDialogTheme);
+        builder.setTitle(R.string.security_warning_title);
+        builder.setMessage(R.string.backup_warning_msg);
+        builder.setPositiveButton(R.string.ok, (dialog, which) -> {
             performBackup();
         });
-        builder.setNegativeButton("Cancelar", null);
+        builder.setNegativeButton(R.string.cancel, null);
         builder.show();
     }
 
     private void performBackup() {
-        ProgressDialog progressDialog = new ProgressDialog(this);
-        progressDialog.setMessage("Realizando Backup...");
+        ProgressDialog progressDialog = new ProgressDialog(this, R.style.CustomDialogTheme);
+        progressDialog.setMessage(getString(R.string.backup_progress));
         progressDialog.setProgressStyle(ProgressDialog.STYLE_HORIZONTAL);
         progressDialog.setCancelable(false);
         progressDialog.setMax(100);
@@ -403,13 +403,13 @@ public class MainActivity extends AppCompatActivity {
             // Dismiss progressDialog na UI thread após o backup
             runOnUiThread(() -> {
                 progressDialog.dismiss();
-                Toast.makeText(MainActivity.this, "Backup concluído com sucesso.\nOs backups foram salvos em: " + backupDir.getAbsolutePath(), Toast.LENGTH_LONG).show();
+                Toast.makeText(MainActivity.this, getString(R.string.backup_success, backupDir.getAbsolutePath()), Toast.LENGTH_LONG).show();
             });
         }).start();
     }
 
-    private void encryptFilesInBackground(List<File> filesToEncrypt) {
-        PdfEncryptionTask task = new PdfEncryptionTask(this, filesToEncrypt, db);
+    private void encryptFilesInBackground(List<PdfEncryptionTask.EncryptionItem> itemsToEncrypt) {
+        PdfEncryptionTask task = new PdfEncryptionTask(this, itemsToEncrypt, db);
         task.execute();
     }
 
@@ -423,8 +423,19 @@ public class MainActivity extends AppCompatActivity {
 
             runOnUiThread(() -> {
                 pdfAdapter.updatePdfDocuments(newPdfDocuments);
+                updateEmptyState();
             });
         }).start();
+    }
+
+    private void updateEmptyState() {
+        if (pdfDocuments.isEmpty()) {
+            emptyState.setVisibility(View.VISIBLE);
+            pdfRecyclerView.setVisibility(View.GONE);
+        } else {
+            emptyState.setVisibility(View.GONE);
+            pdfRecyclerView.setVisibility(View.VISIBLE);
+        }
     }
 
 
@@ -488,22 +499,22 @@ public class MainActivity extends AppCompatActivity {
         return fileName;
     }
     private void decryptPDF(String filePath) {
-        ProgressDialog progressDialog = new ProgressDialog(this);
-        progressDialog.setMessage("Descriptografando PDF...");
+        ProgressDialog progressDialog = new ProgressDialog(this, R.style.CustomDialogTheme);
+        progressDialog.setMessage(getString(R.string.decrypting_pdf));
         progressDialog.setCancelable(false);
         progressDialog.show();
         new Thread(() -> {
             try {
                 String finalFilePath = filePath.startsWith("file:/") ? filePath.substring(6) : filePath;
 
-                File directory = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOCUMENTS), "DecryptedPDFs");
+                File directory = new File(getCacheDir(), "DecryptedPDFs");
                 if (!directory.exists()) {
                     directory.mkdirs();
                 }
 
                 File encryptedFile = new File(finalFilePath);
                 if (!encryptedFile.exists()) {
-                    throw new IOException("Arquivo não encontrado: " + encryptedFile.getAbsolutePath());
+                    throw new IOException(getString(R.string.file_not_found, encryptedFile.getAbsolutePath()));
                 }
 
                 File tempFile = new File(directory.getPath(), "temp.pdf");
@@ -512,17 +523,17 @@ public class MainActivity extends AppCompatActivity {
                 runOnUiThread(() -> {
                     progressDialog.dismiss();
                     if (tempFile.exists()) {
-                        Toast.makeText(this, "PDF descriptografado com sucesso", Toast.LENGTH_SHORT).show();
+                        Toast.makeText(this, R.string.pdf_decrypted_success, Toast.LENGTH_SHORT).show();
                         openPdfFile(tempFile.getPath());
                     } else {
-                        Toast.makeText(this, "Erro ao descriptografar o PDF", Toast.LENGTH_SHORT).show();
+                        Toast.makeText(this, R.string.pdf_decryption_error, Toast.LENGTH_SHORT).show();
                     }
                 });
 
             } catch (Exception e) {
                 runOnUiThread(() -> {
                     progressDialog.dismiss();
-                    Toast.makeText(MainActivity.this, "Erro ao descriptografar o PDF", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(MainActivity.this, R.string.pdf_decryption_error, Toast.LENGTH_SHORT).show();
                 });
             }
 
@@ -532,5 +543,17 @@ public class MainActivity extends AppCompatActivity {
     private void openPdfFile(String filePath) {
         Intent intent = new Intent(MainActivity.this, PdfDisplayActivity.class);
         startActivity(intent);
+    }
+
+    private void cleanOldTempFiles() {
+        File tempDir = new File(getCacheDir(), "DecryptedPDFs");
+        if (tempDir.exists() && tempDir.isDirectory()) {
+            File[] files = tempDir.listFiles();
+            if (files != null) {
+                for (File file : files) {
+                    EncryptionUtils.secureDelete(file);
+                }
+            }
+        }
     }
 }
