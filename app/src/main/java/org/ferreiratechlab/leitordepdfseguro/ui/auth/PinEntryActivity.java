@@ -15,6 +15,10 @@ import androidx.core.content.ContextCompat;
 
 import org.ferreiratechlab.leitordepdfseguro.R;
 import org.ferreiratechlab.leitordepdfseguro.ui.main.MainActivity;
+import org.ferreiratechlab.leitordepdfseguro.utils.KeyManagerUtils;
+import org.ferreiratechlab.leitordepdfseguro.utils.PinSecurityUtils;
+
+import javax.crypto.Cipher;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -24,7 +28,7 @@ public class PinEntryActivity extends AppCompatActivity {
 
     private List<String> pin = new ArrayList<>();
     private View[] dots = new View[6];
-    private String savedPin;
+    private SharedPreferences prefs;
     private Executor executor;
     private BiometricPrompt biometricPrompt;
 
@@ -33,8 +37,8 @@ public class PinEntryActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_pin_entry);
 
-        SharedPreferences prefs = getSharedPreferences("AuthPrefs", MODE_PRIVATE);
-        savedPin = prefs.getString("AppPin", null);
+        prefs = getSharedPreferences("AuthPrefs", MODE_PRIVATE);
+        PinSecurityUtils.migrateLegacyPinIfNeeded(prefs);
 
         View dotContainer = findViewById(R.id.dot_container);
         for (int i = 0; i < 6; i++) {
@@ -59,6 +63,11 @@ public class PinEntryActivity extends AppCompatActivity {
     }
 
     private void setupBiometrics() {
+        boolean useBiometrics = prefs.getBoolean("UseBiometrics", false);
+        if (!useBiometrics) {
+            return;
+        }
+
         executor = ContextCompat.getMainExecutor(this);
         BiometricManager biometricManager = BiometricManager.from(this);
         
@@ -81,12 +90,23 @@ public class PinEntryActivity extends AppCompatActivity {
     }
 
     private void authenticateBiometrically() {
+        final Cipher cipher;
+        try {
+            cipher = KeyManagerUtils.getBiometricCipherOrThrow();
+        } catch (Exception e) {
+            if (KeyManagerUtils.isBiometricEnrollmentInvalidated(e)) {
+                prefs.edit().putBoolean("UseBiometrics", false).apply();
+                Toast.makeText(this, R.string.biometric_invalidated, Toast.LENGTH_LONG).show();
+            }
+            return;
+        }
+
         BiometricPrompt.PromptInfo promptInfo = new BiometricPrompt.PromptInfo.Builder()
                 .setTitle(getString(R.string.biometric_auth_title))
                 .setSubtitle(getString(R.string.enter_pin))
                 .setNegativeButtonText(getString(R.string.cancel))
                 .build();
-        biometricPrompt.authenticate(promptInfo);
+        biometricPrompt.authenticate(promptInfo, new BiometricPrompt.CryptoObject(cipher));
     }
 
     private void addDigit(String digit) {
@@ -95,7 +115,7 @@ public class PinEntryActivity extends AppCompatActivity {
             updateDots();
 
             if (pin.size() == 6) {
-                if (String.join("", pin).equals(savedPin)) {
+                if (PinSecurityUtils.verifyAndMigratePin(prefs, String.join("", pin))) {
                     onAuthSuccess();
                 } else {
                     Toast.makeText(this, R.string.invalid_pin, Toast.LENGTH_SHORT).show();

@@ -73,7 +73,7 @@ public class PdfEncryptionTask extends AsyncTask<Void, Integer, Boolean> {
                         try {
                             this.wait(); // Aguardar até que o usuário responda ao diálogo
                         } catch (InterruptedException e) {
-                            e.printStackTrace();
+                            org.ferreiratechlab.leitordepdfseguro.utils.LoggingUtils.logErrorDebug("PdfEncryption", e);
                         }
                     }
                     if (!overwriteConfirmed) {
@@ -92,10 +92,21 @@ public class PdfEncryptionTask extends AsyncTask<Void, Integer, Boolean> {
 
                 // Criptografar o arquivo temporário e salvar no arquivo criptografado
                 EncryptionUtils.encryptFile(context, file, encryptedFile);
+                org.ferreiratechlab.leitordepdfseguro.utils.LoggingUtils.logPdfEncryptionCompleted(file.getName());
 
                 // Apagar o arquivo original e o temporário de forma segura
-                EncryptionUtils.secureDelete(context, item.originalUri);
-                EncryptionUtils.secureDelete(item.tempFile);
+                try {
+                    EncryptionUtils.secureDelete(context, item.originalUri);
+                } catch (Exception e) {
+                    org.ferreiratechlab.leitordepdfseguro.utils.LoggingUtils.logErrorDebug("PdfEncryption", e);
+                    // Fallback: se falhar zero-fill, avisar usuário mas continuar
+                    org.ferreiratechlab.leitordepdfseguro.utils.LoggingUtils.logOriginalFileZeroFillFailed(e.getClass().getSimpleName());
+                }
+                try {
+                    EncryptionUtils.secureDelete(item.tempFile);
+                } catch (Exception e) {
+                    org.ferreiratechlab.leitordepdfseguro.utils.LoggingUtils.logErrorDebug("PdfEncryption", e);
+                }
 
                 // Verificar novamente se o PDF já existe no banco de dados para evitar duplicação
                 existingPdf = db.pdfDao().getPdfByFilename(file.getName());
@@ -111,7 +122,7 @@ public class PdfEncryptionTask extends AsyncTask<Void, Integer, Boolean> {
             }
             return true;
         } catch (Exception e) {
-            e.printStackTrace();
+            org.ferreiratechlab.leitordepdfseguro.utils.LoggingUtils.logErrorDebug("PdfEncryption", e);
             return false;
         }
     }

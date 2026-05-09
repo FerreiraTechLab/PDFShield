@@ -60,6 +60,9 @@ import org.ferreiratechlab.leitordepdfseguro.ui.display.PdfDocumentWrapper;
 import org.ferreiratechlab.leitordepdfseguro.ui.display.PdfViewModel;
 import org.ferreiratechlab.leitordepdfseguro.R;
 import org.ferreiratechlab.leitordepdfseguro.utils.EncryptionUtils;
+import org.ferreiratechlab.leitordepdfseguro.utils.KeyManagerUtils;
+import org.ferreiratechlab.leitordepdfseguro.utils.PinSecurityUtils;
+import org.ferreiratechlab.leitordepdfseguro.utils.LoggingUtils;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -73,13 +76,12 @@ import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.Executor;
 
+import javax.crypto.Cipher;
+
 public class MainActivity extends AppCompatActivity {
 
     private static final int REQUEST_CODE_OPEN_DOCUMENT = 0;
-
     private static final int REQUEST_CODE_PERMISSIONS = 1;
-    private static final int REQUEST_CODE_MANAGE_EXTERNAL_STORAGE = 2;
-    private static final int YOUR_PERMISSIONS_REQUEST_READ_EXTERNAL_STORAGE = 123;
 
     ExtendedFloatingActionButton addPdfFab;
     RecyclerView pdfRecyclerView;
@@ -118,14 +120,7 @@ public class MainActivity extends AppCompatActivity {
         drawerLayout = findViewById(R.id.drawer_layout);
         encryptionService = new EncryptionService(this);
         executor = ContextCompat.getMainExecutor(this);
-        if(!checkPermissions()){
-            if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE)
-                    != PackageManager.PERMISSION_GRANTED) {
-                ActivityCompat.requestPermissions(this,
-                        new String[]{Manifest.permission.READ_EXTERNAL_STORAGE},
-                        YOUR_PERMISSIONS_REQUEST_READ_EXTERNAL_STORAGE);
-            }
-        }
+        ensureReadPermission();
 
         pdfAdapter = new PdfAdapter(pdfDocuments, pdfUri -> {
             if (pdfUri != null) {
@@ -138,13 +133,7 @@ public class MainActivity extends AppCompatActivity {
         pdfRecyclerView.setLayoutManager(new LinearLayoutManager(this));
         pdfRecyclerView.setAdapter(pdfAdapter);
 
-        addPdfFab.setOnClickListener(v -> {
-            Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
-            intent.addCategory(Intent.CATEGORY_OPENABLE);
-            intent.setType("application/pdf");
-            intent.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true);
-            startActivityForResult(intent, REQUEST_CODE_OPEN_DOCUMENT);
-        });
+        addPdfFab.setOnClickListener(v -> ensureReadPermissionAndOpenPdfSelector());
 
         pdfAdapter.setOnPdfLongClickListener(new PdfAdapter.OnPdfLongClickListener() {
             @Override
@@ -227,37 +216,44 @@ public class MainActivity extends AppCompatActivity {
 
     }
 
-    private boolean checkPermissions() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            return Environment.isExternalStorageManager();
-        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            return checkSelfPermission(Manifest.permission.READ_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED &&
-                    checkSelfPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED;
-        } else {
-            return true; // Permissões são automaticamente concedidas em versões mais antigas
+    private boolean requiresLegacyReadPermission() {
+        return Build.VERSION.SDK_INT >= Build.VERSION_CODES.M
+                && Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU;
+    }
+
+    private boolean checkReadPermission() {
+        if (!requiresLegacyReadPermission()) {
+            return true;
+        }
+        return checkSelfPermission(Manifest.permission.READ_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED;
+    }
+
+    private void requestReadPermission() {
+        if (requiresLegacyReadPermission() && !checkReadPermission()) {
+            requestPermissions(new String[]{Manifest.permission.READ_EXTERNAL_STORAGE}, REQUEST_CODE_PERMISSIONS);
         }
     }
 
-    private void requestPermissions() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            try {
-                Intent intent = new Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION);
-                intent.setData(Uri.parse("package:" + getPackageName()));
-                startActivityForResult(intent, REQUEST_CODE_MANAGE_EXTERNAL_STORAGE);
-            } catch (Exception e) {
-                Intent intent = new Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION);
-                startActivityForResult(intent, REQUEST_CODE_MANAGE_EXTERNAL_STORAGE);
-            }
-        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            requestPermissions(new String[]{Manifest.permission.READ_EXTERNAL_STORAGE, Manifest.permission.WRITE_EXTERNAL_STORAGE}, REQUEST_CODE_PERMISSIONS);
+    private void ensureReadPermission() {
+        if (!checkReadPermission()) {
+            requestReadPermission();
         }
+    }
+
+    private void ensureReadPermissionAndOpenPdfSelector() {
+        if (checkReadPermission()) {
+            openPdfSelector();
+            return;
+        }
+
+        requestReadPermission();
     }
 
     @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
         if (requestCode == REQUEST_CODE_PERMISSIONS) {
-            if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED && grantResults[1] == PackageManager.PERMISSION_GRANTED) {
+            if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
                 openPdfSelector();
             } else {
                 Toast.makeText(this, "Permissões necessárias não concedidas", Toast.LENGTH_SHORT).show();
@@ -302,12 +298,28 @@ public class MainActivity extends AppCompatActivity {
     }
     private void removePdfFromListAndDatabase(int position) {
         PdfDocumentWrapper pdfDocumentWrapper = pdfDocuments.get(position);
-        pdfDocuments.remove(position);
-        pdfAdapter.notifyItemRemoved(position);
-        // Remover o PDF do banco de dados
-        pdfViewModel.deletePdf(pdfDocumentWrapper.getTitle());
-        updateEmptyState();
-        Toast.makeText(MainActivity.this, "PDF removido com sucesso", Toast.LENGTH_SHORT).show();
+        String pdfUri = pdfDocumentWrapper.getUri().toString();
+        
+        // Tentar apagar o arquivo de forma segura antes de remover do banco
+        new Thread(() -> {
+            try {
+                File encryptedFile = new File(pdfUri);
+                if (encryptedFile.exists()) {
+                    EncryptionUtils.secureDelete(encryptedFile);
+                }
+            } catch (Exception e) {
+                LoggingUtils.logErrorDebug("removePdf", e);
+            }
+            
+            // Remover da lista e do banco de dados
+            runOnUiThread(() -> {
+                pdfDocuments.remove(position);
+                pdfAdapter.notifyItemRemoved(position);
+                pdfViewModel.deletePdf(pdfDocumentWrapper.getTitle());
+                updateEmptyState();
+                Toast.makeText(MainActivity.this, "PDF removido com sucesso", Toast.LENGTH_SHORT).show();
+            });
+        }).start();
     }
 
     @Override
@@ -326,15 +338,7 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent resultData) {
         super.onActivityResult(requestCode, resultCode, resultData);
-        if (requestCode == REQUEST_CODE_MANAGE_EXTERNAL_STORAGE) {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                if (Environment.isExternalStorageManager()) {
-                    openPdfSelector();
-                } else {
-                    Toast.makeText(this, "Permissão de gerenciamento de armazenamento necessária", Toast.LENGTH_SHORT).show();
-                }
-            }
-        } else if (requestCode == REQUEST_CODE_OPEN_DOCUMENT && resultCode == RESULT_OK) {
+        if (requestCode == REQUEST_CODE_OPEN_DOCUMENT && resultCode == RESULT_OK) {
             if (resultData != null) {
                 List<PdfEncryptionTask.EncryptionItem> itemsToEncrypt = new ArrayList<>();
                 if (resultData.getClipData() != null) {
@@ -349,7 +353,7 @@ public class MainActivity extends AppCompatActivity {
                             copyContentUriToFile(uri, tempFile);
                             itemsToEncrypt.add(new PdfEncryptionTask.EncryptionItem(tempFile, uri));
                         } catch (IOException e) {
-                            e.printStackTrace();
+                            LoggingUtils.logErrorDebug("selectPdf", e);
                             Toast.makeText(this, "Erro ao copiar o arquivo: " + filename, Toast.LENGTH_SHORT).show();
                         }
                     }
@@ -363,7 +367,7 @@ public class MainActivity extends AppCompatActivity {
                         copyContentUriToFile(uri, tempFile);
                         itemsToEncrypt.add(new PdfEncryptionTask.EncryptionItem(tempFile, uri));
                     } catch (IOException e) {
-                        e.printStackTrace();
+                        LoggingUtils.logErrorDebug("selectPdf", e);
                         Toast.makeText(this, "Erro ao copiar o arquivo: " + filename, Toast.LENGTH_SHORT).show();
                     }
                 }
@@ -408,7 +412,7 @@ public class MainActivity extends AppCompatActivity {
                 try {
                     EncryptionUtils.decryptFile(MainActivity.this, encryptedFile, decryptedFile);
                 } catch (Exception e) {
-                    e.printStackTrace();
+                    LoggingUtils.logErrorDebug("backup", e);
                 }
 
                 // Atualizar progresso na UI thread
@@ -576,11 +580,22 @@ public class MainActivity extends AppCompatActivity {
     private void authenticateAction(Runnable onAuthenticated) {
         SharedPreferences prefs = getSharedPreferences("AuthPrefs", MODE_PRIVATE);
         boolean useBiometrics = prefs.getBoolean("UseBiometrics", false);
-        String savedPin = prefs.getString("AppPin", null);
 
         if (useBiometrics) {
             BiometricManager biometricManager = BiometricManager.from(this);
             if (biometricManager.canAuthenticate(BiometricManager.Authenticators.BIOMETRIC_STRONG) == BiometricManager.BIOMETRIC_SUCCESS) {
+                final Cipher cipher;
+                try {
+                    cipher = KeyManagerUtils.getBiometricCipherOrThrow();
+                } catch (Exception e) {
+                    if (KeyManagerUtils.isBiometricEnrollmentInvalidated(e)) {
+                        prefs.edit().putBoolean("UseBiometrics", false).apply();
+                        Toast.makeText(this, R.string.biometric_invalidated, Toast.LENGTH_LONG).show();
+                    }
+                    showPinVerificationDialog(onAuthenticated);
+                    return;
+                }
+
                 BiometricPrompt biometricPrompt = new BiometricPrompt(this, executor, new BiometricPrompt.AuthenticationCallback() {
                     @Override
                     public void onAuthenticationSucceeded(@NonNull BiometricPrompt.AuthenticationResult result) {
@@ -592,7 +607,7 @@ public class MainActivity extends AppCompatActivity {
                     public void onAuthenticationError(int errorCode, @NonNull CharSequence errString) {
                         super.onAuthenticationError(errorCode, errString);
                         // Se falhar biometria, tenta o PIN interno
-                        showPinVerificationDialog(savedPin, onAuthenticated);
+                        showPinVerificationDialog(onAuthenticated);
                     }
                 });
 
@@ -602,16 +617,17 @@ public class MainActivity extends AppCompatActivity {
                         .setNegativeButtonText(getString(R.string.enter_pin))
                         .build();
 
-                biometricPrompt.authenticate(promptInfo);
+                biometricPrompt.authenticate(promptInfo, new BiometricPrompt.CryptoObject(cipher));
                 return;
             }
         }
         
         // Se não usar biometria ou sensor não disponível, pede PIN
-        showPinVerificationDialog(savedPin, onAuthenticated);
+        showPinVerificationDialog(onAuthenticated);
     }
 
-    private void showPinVerificationDialog(String savedPin, Runnable onSuccess) {
+    private void showPinVerificationDialog(Runnable onSuccess) {
+        SharedPreferences prefs = getSharedPreferences("AuthPrefs", MODE_PRIVATE);
         AlertDialog.Builder builder = new AlertDialog.Builder(this, R.style.CustomDialogTheme);
         View dialogView = getLayoutInflater().inflate(R.layout.dialog_pin_verify, null);
         builder.setView(dialogView);
@@ -639,7 +655,7 @@ public class MainActivity extends AppCompatActivity {
                         dots[i].setBackgroundResource(i < inputPin.size() ? R.drawable.pin_dot_filled : R.drawable.pin_dot_empty);
                     }
                     if (inputPin.size() == 6) {
-                        if (String.join("", inputPin).equals(savedPin)) {
+                        if (PinSecurityUtils.verifyAndMigratePin(prefs, String.join("", inputPin))) {
                             dialog.dismiss();
                             onSuccess.run();
                         } else {

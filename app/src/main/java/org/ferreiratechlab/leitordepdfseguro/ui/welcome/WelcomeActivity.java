@@ -2,10 +2,8 @@ package org.ferreiratechlab.leitordepdfseguro.ui.welcome;
 
 import android.content.Intent;
 import android.content.SharedPreferences;
-import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
-import android.security.keystore.KeyPermanentlyInvalidatedException;
 import android.view.View;
 import android.view.WindowManager;
 import android.widget.Button;
@@ -26,14 +24,13 @@ import org.ferreiratechlab.leitordepdfseguro.ui.auth.PinEntryActivity;
 import org.ferreiratechlab.leitordepdfseguro.ui.auth.PinSetupActivity;
 import org.ferreiratechlab.leitordepdfseguro.ui.main.MainActivity;
 import org.ferreiratechlab.leitordepdfseguro.utils.KeyManagerUtils;
+import org.ferreiratechlab.leitordepdfseguro.utils.PinSecurityUtils;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.Executor;
 
 import javax.crypto.Cipher;
-import javax.crypto.SecretKey;
-
 public class WelcomeActivity extends AppCompatActivity {
 
     private Button authButton;
@@ -57,9 +54,9 @@ public class WelcomeActivity extends AppCompatActivity {
 
     private void checkAuthStatus() {
         SharedPreferences prefs = getSharedPreferences("AuthPrefs", MODE_PRIVATE);
-        String savedPin = prefs.getString("AppPin", null);
+        PinSecurityUtils.migrateLegacyPinIfNeeded(prefs);
 
-        if (savedPin == null) {
+        if (!PinSecurityUtils.hasConfiguredPin(prefs)) {
             new Handler().postDelayed(() -> {
                 startActivity(new Intent(WelcomeActivity.this, PinSetupActivity.class));
                 finish();
@@ -69,14 +66,14 @@ public class WelcomeActivity extends AppCompatActivity {
                 loadingBar.setVisibility(View.GONE);
                 authButton.setVisibility(View.VISIBLE);
                 
-                setupBiometricToggle(prefs, savedPin);
+                setupBiometricToggle(prefs);
                 
                 authButton.setOnClickListener(v -> handleLogin(prefs));
             }, 1500);
         }
     }
 
-    private void setupBiometricToggle(SharedPreferences prefs, String savedPin) {
+    private void setupBiometricToggle(SharedPreferences prefs) {
         BiometricManager biometricManager = BiometricManager.from(this);
         int canAuthenticate = biometricManager.canAuthenticate(BiometricManager.Authenticators.BIOMETRIC_STRONG);
         
@@ -85,13 +82,19 @@ public class WelcomeActivity extends AppCompatActivity {
             
             biometricContainer.setVisibility(View.VISIBLE);
             boolean isCurrentlyEnabled = prefs.getBoolean("UseBiometrics", false);
+
+            if (isCurrentlyEnabled && !isBiometricKeyAvailable()) {
+                prefs.edit().putBoolean("UseBiometrics", false).apply();
+                isCurrentlyEnabled = false;
+                Toast.makeText(this, R.string.biometric_invalidated, Toast.LENGTH_LONG).show();
+            }
             
             biometricSwitch.setOnCheckedChangeListener(null);
             biometricSwitch.setChecked(isCurrentlyEnabled);
             
             biometricSwitch.setOnCheckedChangeListener((buttonView, isChecked) -> {
                 if (isChecked) {
-                    showPinVerificationDialog(savedPin, () -> {
+                    showPinVerificationDialog(() -> {
                         try {
                             // Cria a chave vinculada à biometria para monitorar mudanças
                             KeyManagerUtils.getOrCreateBiometricKey();
@@ -103,7 +106,7 @@ public class WelcomeActivity extends AppCompatActivity {
                     }, () -> {
                         biometricSwitch.setOnCheckedChangeListener(null);
                         biometricSwitch.setChecked(false);
-                        setupBiometricToggle(prefs, savedPin);
+                        setupBiometricToggle(prefs);
                     });
                 } else {
                     prefs.edit().putBoolean("UseBiometrics", false).apply();
@@ -112,7 +115,8 @@ public class WelcomeActivity extends AppCompatActivity {
         }
     }
 
-    private void showPinVerificationDialog(String savedPin, Runnable onSuccess, Runnable onCancel) {
+    private void showPinVerificationDialog(Runnable onSuccess, Runnable onCancel) {
+        SharedPreferences prefs = getSharedPreferences("AuthPrefs", MODE_PRIVATE);
         AlertDialog.Builder builder = new AlertDialog.Builder(this, R.style.CustomDialogTheme);
         View dialogView = getLayoutInflater().inflate(R.layout.dialog_pin_verify, null);
         builder.setView(dialogView);
@@ -139,7 +143,7 @@ public class WelcomeActivity extends AppCompatActivity {
                         dots[i].setBackgroundResource(i < inputPin.size() ? R.drawable.pin_dot_filled : R.drawable.pin_dot_empty);
                     }
                     if (inputPin.size() == 6) {
-                        if (String.join("", inputPin).equals(savedPin)) {
+                        if (PinSecurityUtils.verifyAndMigratePin(prefs, String.join("", inputPin))) {
                             dialog.dismiss();
                             onSuccess.run();
                         } else {
@@ -172,30 +176,21 @@ public class WelcomeActivity extends AppCompatActivity {
         
         if (useBiometrics) {
             try {
-                // Tenta carregar a chave biométrica. Se houver novo dedo, lança exceção.
-                SecretKey bioKey = KeyManagerUtils.getOrCreateBiometricKey();
-                Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding");
-                cipher.init(Cipher.ENCRYPT_MODE, bioKey);
+                Cipher cipher = KeyManagerUtils.getBiometricCipherOrThrow();
                 
                 triggerBiometrics(cipher);
             } catch (Exception e) {
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && e instanceof KeyPermanentlyInvalidatedException) {
-                    // DETECTADO: Digitais mudaram no sistema!
+                if (KeyManagerUtils.isBiometricEnrollmentInvalidated(e)) {
                     prefs.edit().putBoolean("UseBiometrics", false).apply();
                     Toast.makeText(this, R.string.biometric_invalidated, Toast.LENGTH_LONG).show();
                     
-                    // Reseta UI para exigir PIN
                     biometricSwitch.setOnCheckedChangeListener(null);
                     biometricSwitch.setChecked(false);
-                    setupBiometricToggle(prefs, prefs.getString("AppPin", null));
-                    
-                    startActivity(new Intent(this, PinEntryActivity.class));
-                    finish();
-                } else {
-                    // Outro erro: vai para o PIN por segurança
-                    startActivity(new Intent(this, PinEntryActivity.class));
-                    finish();
+                    setupBiometricToggle(prefs);
                 }
+
+                startActivity(new Intent(this, PinEntryActivity.class));
+                finish();
             }
         } else {
             startActivity(new Intent(this, PinEntryActivity.class));
@@ -229,5 +224,14 @@ public class WelcomeActivity extends AppCompatActivity {
 
         // Passa o Cipher vinculado à chave biométrica
         biometricPrompt.authenticate(promptInfo, new BiometricPrompt.CryptoObject(cipher));
+    }
+
+    private boolean isBiometricKeyAvailable() {
+        try {
+            KeyManagerUtils.getBiometricCipherOrThrow();
+            return true;
+        } catch (Exception e) {
+            return false;
+        }
     }
 }

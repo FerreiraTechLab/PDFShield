@@ -1,21 +1,95 @@
-# Add project specific ProGuard rules here.
-# You can control the set of applied configuration files using the
-# proguardFiles setting in build.gradle.
+# Configuração de ProGuard/R8 para PDFShield
+# Objetivo: Minificação, obfuscação de strings e remoção de debug symbols
 #
-# For more details, see
-#   http://developer.android.com/guide/developing/tools/proguard.html
+# Documentação: https://developer.android.com/build/shrink-code
 
-# If your project uses WebView with JS, uncomment the following
-# and specify the fully qualified class name to the JavaScript interface
-# class:
-#-keepclassmembers class fqcn.of.javascript.interface.for.webview {
-#   public *;
-#}
+# ============================================================
+# MANUTENÇÃO: Classes essenciais do Android que não devem ser obfuscadas
+# ============================================================
 
-# Uncomment this to preserve the line number information for
-# debugging stack traces.
-#-keepattributes SourceFile,LineNumberTable
+# Manter Activities, Services, Broadcast Receivers, Providers (Android exige nomes)
+-keep public class * extends android.app.Activity
+-keep public class * extends android.app.Service
+-keep public class * extends android.content.BroadcastReceiver
+-keep public class * extends android.content.ContentProvider
+-keep public class * extends android.app.Fragment
+-keep public class * extends androidx.fragment.app.Fragment
 
-# If you keep the line number information, uncomment this to
-# hide the original source file name.
-#-renamesourcefileattribute SourceFile
+# Manter handlers (usados em intents)
+-keepclasseswithmembernames class * {
+    native <methods>;
+}
+
+# Manter construtores padrão (Android reflection)
+-keepclassmembers class * {
+    public <init>(android.content.Context, android.util.AttributeSet);
+}
+
+# ============================================================
+# ROOM DATABASE: Manter entities e DAOs (reflection)
+# ============================================================
+-keep @androidx.room.Entity class *
+-keep @androidx.room.Dao class *
+-keepclassmembers class * {
+    @androidx.room.* <fields>;
+    @androidx.room.* <methods>;
+}
+
+# ============================================================
+# CRIPTOGRAFIA: Manter classes de segurança
+# ============================================================
+-keep class org.ferreiratechlab.leitordepdfseguro.utils.KeyManagerUtils
+-keep class org.ferreiratechlab.leitordepdfseguro.utils.PinSecurityUtils
+-keep class org.ferreiratechlab.leitordepdfseguro.utils.EncryptionUtils
+-keepclassmembers class org.ferreiratechlab.leitordepdfseguro.utils.* {
+    public <methods>;
+    public <fields>;
+}
+
+# ============================================================
+# SEGURANÇA: Obfuscação de strings
+# ============================================================
+# R8 automaticamente obfusca strings quando minifyEnabled=true
+# Remover chamadas de debug logging
+-assumenosideeffects class android.util.Log {
+    public *** d(...);
+    public *** v(...);
+    public *** i(...);
+}
+
+# ============================================================
+# OTIMIZAÇÃO: Remover debug symbols
+# ============================================================
+# NÃO manter informações de linha (protege stack traces)
+# -keepattributes SourceFile,LineNumberTable é COMENTADO por design
+
+# Se absolutamente necessário para crash reporting (ex: Firebase Crashlytics),
+# descomente abaixo E use Proguard mapping file no servidor:
+# -keepattributes SourceFile,LineNumberTable
+# -renamesourcefileattribute SourceFile
+
+# ============================================================
+# COMPATIBILIDADE: AndroidX
+# ============================================================
+-dontwarn androidx.**
+-keep class androidx.** { *; }
+-keep interface androidx.** { *; }
+
+# ============================================================
+# BIBLIOTECAS EXTERNAS
+# ============================================================
+
+# PDFBox
+-dontwarn org.apache.pdfbox.**
+-keep class org.apache.pdfbox.** { *; }
+
+# AndroidPdfViewer
+-dontwarn com.github.barteksc.pdfviewer.**
+-keep class com.github.barteksc.pdfviewer.** { *; }
+
+# ============================================================
+# VERBOSE (debug purpose only; remove in production)
+# ============================================================
+# Descomente para ver detalhes da minificação:
+# -verbose
+# -printmapping mapping.txt

@@ -1,10 +1,12 @@
 package org.ferreiratechlab.leitordepdfseguro.utils;
 
+import android.security.keystore.KeyPermanentlyInvalidatedException;
 import android.security.keystore.KeyGenParameterSpec;
 import android.security.keystore.KeyProperties;
 
 import java.security.KeyStore;
 
+import javax.crypto.Cipher;
 import javax.crypto.KeyGenerator;
 import javax.crypto.SecretKey;
 
@@ -67,5 +69,23 @@ public class KeyManagerUtils {
             keyGenerator.init(builder.build());
             return keyGenerator.generateKey();
         }
+    }
+
+    public static Cipher getBiometricCipherOrThrow() throws Exception {
+        SecretKey bioKey = getOrCreateBiometricKey();
+        Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding");
+        cipher.init(Cipher.ENCRYPT_MODE, bioKey);
+        return cipher;
+    }
+
+    public static boolean isBiometricEnrollmentInvalidated(Throwable throwable) {
+        Throwable current = throwable;
+        while (current != null) {
+            if (current instanceof KeyPermanentlyInvalidatedException) {
+                return true;
+            }
+            current = current.getCause();
+        }
+        return false;
     }
 }

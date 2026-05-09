@@ -34,8 +34,6 @@ import com.shockwave.pdfium.PdfPasswordException;
 import com.shockwave.pdfium.PdfiumCore;
 import android.Manifest;
 import android.view.MotionEvent;
-
-
 import org.ferreiratechlab.leitordepdfseguro.R;
 import org.ferreiratechlab.leitordepdfseguro.utils.EncryptionUtils;
 
@@ -167,7 +165,6 @@ public class PdfDisplayActivity extends AppCompatActivity {
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        deleteTemporaryFiles();
         hideHandler.removeCallbacks(hideRunnable);
     }
 
@@ -178,11 +175,15 @@ public class PdfDisplayActivity extends AppCompatActivity {
         finish();
     }
 
+    private String getFileProviderAuthority() {
+        return getPackageName() + ".provider";
+    }
+
     private boolean isPdfProtected() {
         PdfiumCore pdfiumCore = new PdfiumCore(this);
         try {
             Uri pdfUri = FileProvider.getUriForFile(this,
-                    "org.ferreiratechlab.leitordepdfseguro.provider", new File(pdfPath));
+                    getFileProviderAuthority(), new File(pdfPath));
             ParcelFileDescriptor fd = getContentResolver().openFileDescriptor(pdfUri, "r");
             PdfDocument pdfDocument = pdfiumCore.newDocument(fd);
             pdfiumCore.closeDocument(pdfDocument);
@@ -200,12 +201,10 @@ public class PdfDisplayActivity extends AppCompatActivity {
         builder.setView(dialogView);
 
         EditText input = dialogView.findViewById(R.id.passwordEditText);
-
         builder.setPositiveButton(R.string.ok, (dialog, which) -> {
             password = input.getText().toString();
             openPdfWithPassword(password);
         });
-
         builder.setNegativeButton(R.string.cancel, (dialog, which) -> finish());
         builder.setOnCancelListener(dialog -> finish());
         builder.show();
@@ -228,8 +227,8 @@ public class PdfDisplayActivity extends AppCompatActivity {
 
     private void openPdfWithPassword(String password) {
         Uri pdfUri = FileProvider.getUriForFile(this,
-                "org.ferreiratechlab.leitordepdfseguro.provider", new File(pdfPath));
-        
+            getFileProviderAuthority(), new File(pdfPath));
+
         pdfView.fromUri(pdfUri)
                 .password(password)
                 .defaultPage(pdfView.getCurrentPage())
@@ -244,7 +243,7 @@ public class PdfDisplayActivity extends AppCompatActivity {
                     pageIndicator.setText(String.format(Locale.getDefault(), "%d/%d", page + 1, pageCount));
                     seekBar.setMax(pageCount - 1);
                     seekBar.setProgress(page);
-                    
+
                     SharedPreferences.Editor myEdit = sharedPreferences.edit();
                     myEdit.putInt(pdfPath, page);
                     myEdit.apply();
@@ -262,7 +261,7 @@ public class PdfDisplayActivity extends AppCompatActivity {
 
     private void openPdf() {
         Uri pdfUri = FileProvider.getUriForFile(this,
-                "org.ferreiratechlab.leitordepdfseguro.provider", new File(pdfPath));
+            getFileProviderAuthority(), new File(pdfPath));
 
         pdfView.fromUri(pdfUri)
                 .defaultPage(pdfView.getCurrentPage())

@@ -11,6 +11,7 @@ import androidx.appcompat.app.AppCompatActivity;
 
 import org.ferreiratechlab.leitordepdfseguro.R;
 import org.ferreiratechlab.leitordepdfseguro.ui.main.MainActivity;
+import org.ferreiratechlab.leitordepdfseguro.utils.PinSecurityUtils;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -97,7 +98,7 @@ public class PinSetupActivity extends AppCompatActivity {
 
     private void savePin(String pinStr) {
         SharedPreferences prefs = getSharedPreferences("AuthPrefs", MODE_PRIVATE);
-        prefs.edit().putString("AppPin", pinStr).apply();
+        PinSecurityUtils.savePin(prefs, pinStr);
 
         // Pergunta se deseja vincular biometria
         androidx.appcompat.app.AlertDialog.Builder builder = new androidx.appcompat.app.AlertDialog.Builder(this, R.style.CustomDialogTheme);

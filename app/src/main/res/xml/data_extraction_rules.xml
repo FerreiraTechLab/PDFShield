@@ -1,19 +1,62 @@
-<?xml version="1.0" encoding="utf-8"?><!--
-   Sample data extraction rules file; uncomment and customize as necessary.
-   See https://developer.android.com/about/versions/12/backup-restore#xml-changes
-   for details.
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Regras de extração de dados do Android (API 31+).
+    
+    Define o comportamento de:
+    1. Cloud Backup: sincronização automática via Google One
+    2. Device Transfer: migração entre dispositivos durante setup
+    
+    Dados sensíveis são EXCLUÍDOS em ambos os cenários para evitar:
+    - Sincronização não-autorizada em cloud
+    - Transferência de secrets PIN/biométricos entre dispositivos
+    - Exposição de chaves criptográficas em backups gerenciados pelo usuário
+    
+    Documentação: https://developer.android.com/about/versions/12/backup-restore
 -->
 <data-extraction-rules>
     <cloud-backup>
-        <!-- TODO: Use <include> and <exclude> to control what is backed up.
-        <include .../>
-        <exclude .../>
+        <!-- EXCLUIR: Preferências de autenticação (PIN hash, salt, biometria) -->
+        <exclude domain="sharedpref" path="AuthPrefs.xml" />
+        
+        <!-- EXCLUIR: Chaves criptográficas gerenciadas pelo Android Keystore -->
+        <exclude domain="sharedpref" path="androidx.security.crypto.prefs.xml" />
+        
+        <!-- EXCLUIR: Database de PDFs e metadados -->
+        <exclude domain="database" path="pdf_database.db" />
+        <exclude domain="database" path="pdf_database.db-wal" />
+        <exclude domain="database" path="pdf_database.db-shm" />
+        
+        <!-- EXCLUIR: Cache e arquivos criptografados -->
+        <exclude domain="cache" />
+        <exclude domain="file" path="EncryptedPDFs/" />
+        <exclude domain="file" path="DecryptedPDFs/" />
+        
+        <!-- 
+            Efeito: Cloud Backup desabilitado completamente.
+            Motivo: PDFShield é um app de criptografia; nenhum dado deve sair do dispositivo
+            para cloud sem consentimento explícito do usuário.
         -->
     </cloud-backup>
-    <!--
+    
     <device-transfer>
-        <include .../>
-        <exclude .../>
+        <!-- EXCLUIR: Não transferir secrets entre dispositivos -->
+        <exclude domain="sharedpref" path="AuthPrefs.xml" />
+        <exclude domain="sharedpref" path="androidx.security.crypto.prefs.xml" />
+        
+        <!-- EXCLUIR: Não transferir banco de dados de PDFs -->
+        <exclude domain="database" path="pdf_database.db" />
+        <exclude domain="database" path="pdf_database.db-wal" />
+        <exclude domain="database" path="pdf_database.db-shm" />
+        
+        <!-- EXCLUIR: Não transferir arquivos criptografados -->
+        <exclude domain="cache" />
+        <exclude domain="file" path="EncryptedPDFs/" />
+        <exclude domain="file" path="DecryptedPDFs/" />
+        
+        <!-- 
+            Efeito: Device Transfer desabilitado completamente.
+            Motivo: Usuário deve configurar novo PIN e autenticação no novo dispositivo.
+                    PDFs criptografados são ligados ao device-specific keystore.
+        -->
     </device-transfer>
-    -->
 </data-extraction-rules>
