@@ -21,7 +21,7 @@
     <string name="nav_backup">External Backup</string>
     <string name="nav_about">About the App</string>
     <string name="reader_title">PDF Reader</string>
-    <string name="app_version">Version 1.3</string>
+    <string name="app_version">Version 1.4</string>
 
     <!-- New Strings for tasks and dialogs -->
     <string name="encrypting_pdfs">Encrypting PDFs...</string>
