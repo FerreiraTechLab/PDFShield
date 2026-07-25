@@ -85,7 +85,7 @@
     <!-- Home (post-login module chooser) -->
     <string name="home_choose_title">What do you want to open?</string>
     <string name="home_pdfs_option">PDFs</string>
-    <string name="home_texts_option">Texts</string>
+    <string name="home_texts_option">Safety Zone</string>
 
     <!-- Dashboard Strings -->
     <string name="home_welcome">Security Vault</string>
@@ -101,7 +101,7 @@
     <string name="add_text">Add text</string>
     <string name="clear_all_texts">Clear all</string>
     <string name="nav_switch_to_pdfs">View PDFs</string>
-    <string name="nav_switch_to_texts">View Texts</string>
+    <string name="nav_switch_to_texts">Access Safety Zone</string>
     <string name="nav_import_texts">Import texts</string>
     <string name="nav_export_texts">Export texts</string>
     <string name="nav_check_clipboard">Check clipboard</string>

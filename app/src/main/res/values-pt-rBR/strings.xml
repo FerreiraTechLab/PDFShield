@@ -85,7 +85,7 @@
     <!-- Home (tela de escolha pós-login) -->
     <string name="home_choose_title">O que você quer abrir?</string>
     <string name="home_pdfs_option">PDFs</string>
-    <string name="home_texts_option">Textos</string>
+    <string name="home_texts_option">Área Salva</string>
 
     <!-- Dashboard Strings -->
     <string name="home_welcome">Cofre de Segurança</string>
@@ -101,7 +101,7 @@
     <string name="add_text">Adicionar texto</string>
     <string name="clear_all_texts">Limpar tudo</string>
     <string name="nav_switch_to_pdfs">Ver PDFs</string>
-    <string name="nav_switch_to_texts">Ver Textos</string>
+    <string name="nav_switch_to_texts">Acessar Área Salva</string>
     <string name="nav_import_texts">Importar textos</string>
     <string name="nav_export_texts">Exportar textos</string>
     <string name="nav_check_clipboard">Verificar área de transferência</string>
