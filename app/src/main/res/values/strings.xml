@@ -21,7 +21,10 @@
     <string name="nav_backup">External Backup</string>
     <string name="nav_delete_all">Delete All Files</string>
     <string name="nav_about">About the App</string>
+    <string name="nav_exit">Exit Application</string>
     <string name="reader_title">PDF Reader</string>
+    <string name="search_pdfs_hint">Search PDFs…</string>
+    <string name="pdf_menu_options">Options for %s</string>
     <string name="app_version">Version 1.5</string>
 
     <!-- New Strings for tasks and dialogs -->
@@ -84,8 +87,15 @@
     <string name="home_pdfs_option">PDFs</string>
     <string name="home_texts_option">Texts</string>
 
+    <!-- Dashboard Strings -->
+    <string name="home_welcome">Security Vault</string>
+    <string name="home_summary_pdfs">%d protected documents</string>
+    <string name="home_summary_texts">%d secure notes</string>
+    <string name="home_desc_pdfs">Manage your encrypted PDF files</string>
+    <string name="home_desc_texts">Store notes, links and passwords securely</string>
+
     <!-- Saved Texts module -->
-    <string name="texts_title">Saved Texts</string>
+    <string name="texts_title">Safety Zone</string>
     <string name="search_hint">Search…</string>
     <string name="no_texts">No saved texts</string>
     <string name="add_text">Add text</string>
@@ -97,6 +107,8 @@
     <string name="nav_check_clipboard">Check clipboard</string>
     <string name="add_text_dialog_title">New text</string>
     <string name="add_text_hint">Type or paste a text/link</string>
+    <string name="menu_copy">Copy</string>
+    <string name="menu_edit">Edit</string>
     <string name="text_copied">Copied to clipboard</string>
     <string name="text_saved">Text saved</string>
     <string name="text_deleted">Text deleted</string>
@@ -115,4 +127,13 @@
     <string name="delete_import_source_title">Delete original file?</string>
     <string name="delete_import_source_msg">The imported texts are now encrypted in the app. Do you want to securely delete the original .txt file (still in plain text)?</string>
     <string name="text_empty_error">Enter some text first</string>
+
+    <string name="choose_note_type">Choose note type</string>
+    <string name="simple_note">Simple Note</string>
+    <string name="long_note">Long Note/Editor</string>
+    <string name="save">Save</string>
+    <string name="edit_note">Edit Note</string>
+    <string name="new_long_note">New Long Note</string>
+    <string name="note_saved_success">Note saved securely</string>
+    <string name="error_save_note">Failed to save note. Please try again.</string>
 </resources>

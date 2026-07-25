@@ -28,6 +28,31 @@
                 app:navigationIconTint="@color/white" />
         </com.google.android.material.appbar.AppBarLayout>
 
+        <com.google.android.material.textfield.TextInputLayout
+            android:id="@+id/search_input_layout"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginHorizontal="16dp"
+            android:layout_marginTop="8dp"
+            app:boxStrokeColor="@color/accent_cyan"
+            app:hintTextColor="@color/accent_cyan"
+            app:startIconDrawable="@android:drawable/ic_menu_search"
+            app:startIconTint="@color/text_secondary"
+            style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+            app:layout_constraintTop_toBottomOf="@id/appBarLayout">
+
+            <com.google.android.material.textfield.TextInputEditText
+                android:id="@+id/search_edit_text"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:hint="@string/search_pdfs_hint"
+                android:inputType="text"
+                android:imeOptions="flagNoPersonalizedLearning"
+                android:maxLines="1"
+                android:textColor="@color/white"
+                android:textColorHint="@color/text_secondary" />
+        </com.google.android.material.textfield.TextInputLayout>
+
         <androidx.recyclerview.widget.RecyclerView
             android:id="@+id/pdf_recycler_view"
             android:layout_width="match_parent"
@@ -35,7 +60,7 @@
             android:paddingTop="8dp"
             android:clipToPadding="false"
             app:layout_constraintBottom_toBottomOf="parent"
-            app:layout_constraintTop_toBottomOf="@id/appBarLayout" />
+            app:layout_constraintTop_toBottomOf="@id/search_input_layout" />
 
         <LinearLayout
             android:id="@+id/empty_state"

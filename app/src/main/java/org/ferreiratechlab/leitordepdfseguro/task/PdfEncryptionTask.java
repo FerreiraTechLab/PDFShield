@@ -205,7 +205,7 @@ public class PdfEncryptionTask {
      * próprio lote sendo importado.
      */
     private Pdf findExistingByTitle(String displayName) {
-        for (Pdf candidate : db.pdfDao().getAll()) {
+        for (Pdf candidate : db.pdfDao().getAllSync()) {
             String decryptedTitle = candidate.title;
             if (candidate.metadataVersion == 2) {
                 try {
@@ -270,7 +270,6 @@ public class PdfEncryptionTask {
         }
         if (result) {
             Toast.makeText(activity, R.string.pdf_encrypted_success, Toast.LENGTH_SHORT).show();
-            activity.updatePdfListFromDatabase();
         } else {
             Toast.makeText(activity, R.string.pdf_encryption_error, Toast.LENGTH_SHORT).show();
         }

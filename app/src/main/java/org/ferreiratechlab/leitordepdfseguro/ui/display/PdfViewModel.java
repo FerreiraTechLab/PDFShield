@@ -3,7 +3,6 @@ package org.ferreiratechlab.leitordepdfseguro.ui.display;
 import android.net.Uri;
 
 import androidx.lifecycle.LiveData;
-import androidx.lifecycle.MutableLiveData;
 import androidx.lifecycle.ViewModel;
 
 import org.ferreiratechlab.leitordepdfseguro.data.db.AppDatabase;
@@ -17,12 +16,11 @@ import java.util.List;
 
 public class PdfViewModel extends ViewModel {
     private PdfDao pdfDao;
-    private MutableLiveData<List<Pdf>> pdfs = new MutableLiveData<>();
+    private LiveData<List<Pdf>> pdfs;
 
     public void init(AppDatabase db) {
         pdfDao = db.pdfDao();
-        List<Pdf> savedPdfs = db.pdfDao().getAll();
-        pdfs.postValue(savedPdfs);
+        pdfs = pdfDao.getAll();
     }
 
     public LiveData<List<Pdf>> getPdfs() {

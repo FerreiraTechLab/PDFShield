@@ -1,5 +1,6 @@
 package org.ferreiratechlab.leitordepdfseguro.data.db;
 
+import androidx.lifecycle.LiveData;
 import androidx.room.Dao;
 import androidx.room.Insert;
 import androidx.room.Query;
@@ -14,7 +15,13 @@ import java.util.List;
 @Dao
 public interface PdfDao {
     @Query("SELECT * FROM Pdf")
-    List<Pdf> getAll();
+    LiveData<List<Pdf>> getAll();
+
+    @Query("SELECT * FROM Pdf")
+    List<Pdf> getAllSync();
+
+    @Query("SELECT COUNT(*) FROM Pdf")
+    LiveData<Integer> getCount();
 
     @Insert
     void insertAll(Pdf... pdfs);

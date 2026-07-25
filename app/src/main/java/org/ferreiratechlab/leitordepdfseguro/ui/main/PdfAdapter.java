@@ -5,26 +5,28 @@ import android.net.Uri;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.ImageButton;
 import android.widget.TextView;
 
+import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
-
-
 
 import org.ferreiratechlab.leitordepdfseguro.ui.display.PdfDocumentWrapper;
 import org.ferreiratechlab.leitordepdfseguro.R;
 
 import java.io.IOException;
 import java.security.GeneralSecurityException;
+import java.util.ArrayList;
 import java.util.List;
 
 public class PdfAdapter extends RecyclerView.Adapter<PdfAdapter.PdfViewHolder> {
     private List<PdfDocumentWrapper> pdfDocuments;
+    private List<PdfDocumentWrapper> filteredList;
     private OnPdfClickListener listener;
-    private OnPdfLongClickListener longClickListener;
+    private OnPdfMenuClickListener menuClickListener;
 
-    public interface OnPdfLongClickListener {
-        void onPdfLongClick(int position);
+    public interface OnPdfMenuClickListener {
+        void onPdfMenuClick(PdfDocumentWrapper pdf, View anchor);
     }
 
     public interface OnPdfClickListener {
@@ -33,68 +35,87 @@ public class PdfAdapter extends RecyclerView.Adapter<PdfAdapter.PdfViewHolder> {
 
     public PdfAdapter(List<PdfDocumentWrapper> pdfDocuments, OnPdfClickListener listener) {
         this.pdfDocuments = pdfDocuments;
+        this.filteredList = new ArrayList<>(pdfDocuments);
         this.listener = listener;
     }
 
-    public void setOnPdfLongClickListener(OnPdfLongClickListener longClickListener) {
-        this.longClickListener = longClickListener;
+    public void setOnPdfMenuClickListener(OnPdfMenuClickListener menuClickListener) {
+        this.menuClickListener = menuClickListener;
     }
 
+    @NonNull
     @Override
-    public PdfViewHolder onCreateViewHolder(ViewGroup parent, int viewType) {
+    public PdfViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
         View itemView = LayoutInflater.from(parent.getContext()).inflate(R.layout.pdf_item, parent, false);
         return new PdfViewHolder(itemView);
     }
 
     @Override
-    public void onBindViewHolder(PdfViewHolder holder, @SuppressLint("RecyclerView") int position) {
-        PdfDocumentWrapper pdfDocument = pdfDocuments.get(position);
+    public void onBindViewHolder(@NonNull PdfViewHolder holder, int position) {
+        PdfDocumentWrapper pdfDocument = filteredList.get(position);
         holder.pdfTitle.setText(pdfDocument.getTitle());
 
-        holder.itemView.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                try {
+        holder.itemView.setOnClickListener(v -> {
+            try {
+                if (listener != null) {
                     listener.onPdfClick(pdfDocument.getUri());
-                } catch (IOException | GeneralSecurityException e) {
-                    e.printStackTrace();
                 }
+            } catch (IOException | GeneralSecurityException e) {
+                e.printStackTrace();
             }
         });
 
-        holder.itemView.setOnLongClickListener(new View.OnLongClickListener() {
-            @Override
-            public boolean onLongClick(View v) {
-                if (longClickListener != null) {
-                    longClickListener.onPdfLongClick(position);
-                    return true;
-                }
-                return false;
+        holder.btnMenu.setOnClickListener(v -> {
+            if (menuClickListener != null) {
+                menuClickListener.onPdfMenuClick(pdfDocument, v);
             }
         });
     }
+
+    @SuppressLint("NotifyDataSetChanged")
     public void updatePdfDocuments(List<PdfDocumentWrapper> newPdfDocuments) {
         this.pdfDocuments.clear();
         this.pdfDocuments.addAll(newPdfDocuments);
+        applyFilter(""); // Reset filter
+    }
+
+    @SuppressLint("NotifyDataSetChanged")
+    public void applyFilter(String query) {
+        String normalizedQuery = query.toLowerCase().trim();
+        filteredList.clear();
+        if (normalizedQuery.isEmpty()) {
+            filteredList.addAll(pdfDocuments);
+        } else {
+            for (PdfDocumentWrapper doc : pdfDocuments) {
+                if (doc.getTitle().toLowerCase().contains(normalizedQuery)) {
+                    filteredList.add(doc);
+                }
+            }
+        }
         notifyDataSetChanged();
     }
 
     @Override
     public int getItemCount() {
-        return pdfDocuments.size();
+        return filteredList.size();
     }
 
-    public class PdfViewHolder extends RecyclerView.ViewHolder {
+    public boolean isEmpty() {
+        return pdfDocuments.isEmpty();
+    }
+
+    public boolean isFilterEmpty() {
+        return filteredList.isEmpty();
+    }
+
+    public static class PdfViewHolder extends RecyclerView.ViewHolder {
         TextView pdfTitle;
+        ImageButton btnMenu;
 
         public PdfViewHolder(View itemView) {
             super(itemView);
             pdfTitle = itemView.findViewById(R.id.pdf_title);
+            btnMenu = itemView.findViewById(R.id.btn_item_menu);
         }
     }
-
-    public List<PdfDocumentWrapper> getItems() {
-        return pdfDocuments;
-    }
-
 }

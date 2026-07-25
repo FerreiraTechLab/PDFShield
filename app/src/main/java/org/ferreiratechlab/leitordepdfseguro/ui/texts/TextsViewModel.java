@@ -1,7 +1,6 @@
 package org.ferreiratechlab.leitordepdfseguro.ui.texts;
 
 import androidx.lifecycle.LiveData;
-import androidx.lifecycle.MutableLiveData;
 import androidx.lifecycle.ViewModel;
 
 import org.ferreiratechlab.leitordepdfseguro.data.db.AppDatabase;
@@ -10,20 +9,24 @@ import org.ferreiratechlab.leitordepdfseguro.data.model.SavedText;
 import org.ferreiratechlab.leitordepdfseguro.utils.EncryptionUtils;
 import org.ferreiratechlab.leitordepdfseguro.utils.LoggingUtils;
 import org.ferreiratechlab.leitordepdfseguro.utils.SessionKeyHolder;
+import org.ferreiratechlab.leitordepdfseguro.utils.AppExecutors;
 
 import java.util.List;
+import java.util.regex.Pattern;
 
 public class TextsViewModel extends ViewModel {
     private TextDao textDao;
-    private final MutableLiveData<List<SavedText>> texts = new MutableLiveData<>();
+    private LiveData<List<SavedText>> texts;
+
+    private static final Pattern LINK_PATTERN = Pattern.compile("^(?:https?://|ftp://|www\\.)\\S+$", Pattern.CASE_INSENSITIVE);
+
+    public static boolean isLink(String text) {
+        return text != null && LINK_PATTERN.matcher(text.trim()).matches();
+    }
 
     public void init(AppDatabase db) {
         textDao = db.textDao();
-        refresh();
-    }
-
-    public void refresh() {
-        texts.postValue(textDao.getAll());
+        texts = textDao.getAll();
     }
 
     public LiveData<List<SavedText>> getTexts() {
@@ -31,20 +34,30 @@ public class TextsViewModel extends ViewModel {
     }
 
     public void deleteText(int id) {
-        textDao.deleteById(id);
-        refresh();
+        AppExecutors.background().execute(() -> textDao.deleteById(id));
     }
 
     public void deleteAllTexts() {
-        textDao.deleteAll();
-        refresh();
+        AppExecutors.background().execute(() -> textDao.deleteAll());
+    }
+
+    public SavedText getNoteById(int id) {
+        return textDao.getById(id);
     }
 
     /** Salva um texto novo (já verificado como não-duplicata pelo chamador). */
     public void saveText(String plainText) throws Exception {
         String encrypted = EncryptionUtils.encryptString(SessionKeyHolder.require(), plainText);
         textDao.insert(new SavedText(encrypted, System.currentTimeMillis()));
-        refresh();
+    }
+
+    /** Atualiza um texto existente com nova criptografia. */
+    public void updateText(int id, String newPlainText) throws Exception {
+        SavedText existing = textDao.getById(id);
+        if (existing != null) {
+            existing.content = EncryptionUtils.encryptString(SessionKeyHolder.require(), newPlainText);
+            textDao.update(existing);
+        }
     }
 
     /** Decifra o conteúdo salvo para exibição. */
@@ -63,7 +76,10 @@ public class TextsViewModel extends ViewModel {
      * padrão de PdfEncryptionTask#findExistingByTitle.
      */
     public static boolean alreadyExists(TextDao dao, String candidate) {
-        for (SavedText savedText : dao.getAll()) {
+        List<SavedText> all = dao.getAllSync();
+        if (all == null) return false;
+        
+        for (SavedText savedText : all) {
             if (candidate.equals(toDisplayString(savedText))) {
                 return true;
             }

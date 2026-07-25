@@ -116,7 +116,7 @@ public class TextNoteActivity extends AppCompatActivity {
                     });
                 } catch (Exception e) {
                     LoggingUtils.logErrorDebug("TextNoteActivity", e);
-                    runOnUiThread(() -> Toast.makeText(this, R.string.pin_setup_error, Toast.LENGTH_SHORT).show());
+                    runOnUiThread(() -> Toast.makeText(this, R.string.error_save_note, Toast.LENGTH_SHORT).show());
                 }
             });
         });

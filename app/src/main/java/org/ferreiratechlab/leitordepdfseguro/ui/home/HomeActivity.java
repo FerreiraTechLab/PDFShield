@@ -3,10 +3,13 @@ package org.ferreiratechlab.leitordepdfseguro.ui.home;
 import android.content.Intent;
 import android.os.Bundle;
 import android.view.WindowManager;
+import android.view.animation.AnimationUtils;
+import android.widget.TextView;
 
 import androidx.appcompat.app.AppCompatActivity;
 
 import org.ferreiratechlab.leitordepdfseguro.R;
+import org.ferreiratechlab.leitordepdfseguro.data.db.AppDatabase;
 import org.ferreiratechlab.leitordepdfseguro.ui.main.MainActivity;
 import org.ferreiratechlab.leitordepdfseguro.ui.texts.TextsActivity;
 
@@ -17,19 +20,43 @@ import org.ferreiratechlab.leitordepdfseguro.ui.texts.TextsActivity;
  */
 public class HomeActivity extends AppCompatActivity {
 
+    private TextView countPdfsText;
+    private TextView countTextsText;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         getWindow().setFlags(WindowManager.LayoutParams.FLAG_SECURE, WindowManager.LayoutParams.FLAG_SECURE);
         setContentView(R.layout.activity_home);
 
-        findViewById(R.id.open_pdfs_button).setOnClickListener(v -> {
+        countPdfsText = findViewById(R.id.count_pdfs);
+        countTextsText = findViewById(R.id.count_texts);
+
+        findViewById(R.id.card_pdfs).setOnClickListener(v -> {
             startActivity(new Intent(this, MainActivity.class));
             finish();
         });
-        findViewById(R.id.open_texts_button).setOnClickListener(v -> {
+        findViewById(R.id.card_texts).setOnClickListener(v -> {
             startActivity(new Intent(this, TextsActivity.class));
             finish();
+        });
+
+        // Animações de entrada para um toque mais profissional
+        findViewById(R.id.card_pdfs).startAnimation(AnimationUtils.loadAnimation(this, android.R.anim.fade_in));
+        findViewById(R.id.card_texts).startAnimation(AnimationUtils.loadAnimation(this, android.R.anim.fade_in));
+
+        observeCounts();
+    }
+
+    private void observeCounts() {
+        AppDatabase db = AppDatabase.getInstance(this);
+        
+        db.pdfDao().getCount().observe(this, count -> {
+            countPdfsText.setText(getString(R.string.home_summary_pdfs, count));
+        });
+
+        db.textDao().getCount().observe(this, count -> {
+            countTextsText.setText(getString(R.string.home_summary_texts, count));
         });
     }
 }

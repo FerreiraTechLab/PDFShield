@@ -21,7 +21,10 @@
     <string name="nav_backup">Backup Externo</string>
     <string name="nav_delete_all">Excluir Todos os Arquivos</string>
     <string name="nav_about">Sobre o App</string>
+    <string name="nav_exit">Sair do Aplicativo</string>
     <string name="reader_title">Leitor de PDF</string>
+    <string name="search_pdfs_hint">Buscar PDFs…</string>
+    <string name="pdf_menu_options">Opções para %s</string>
     <string name="app_version">Versão 1.5</string>
 
     <!-- Novas Strings para tarefas e diálogos -->
@@ -84,8 +87,15 @@
     <string name="home_pdfs_option">PDFs</string>
     <string name="home_texts_option">Textos</string>
 
+    <!-- Dashboard Strings -->
+    <string name="home_welcome">Cofre de Segurança</string>
+    <string name="home_summary_pdfs">%d documentos protegidos</string>
+    <string name="home_summary_texts">%d notas seguras</string>
+    <string name="home_desc_pdfs">Gerencie seus arquivos PDF criptografados</string>
+    <string name="home_desc_texts">Armazene notas, links e senhas com segurança</string>
+
     <!-- Módulo de Textos salvos -->
-    <string name="texts_title">Textos Salvos</string>
+    <string name="texts_title">Área Salva</string>
     <string name="search_hint">Buscar…</string>
     <string name="no_texts">Nenhum texto salvo</string>
     <string name="add_text">Adicionar texto</string>
@@ -97,6 +107,8 @@
     <string name="nav_check_clipboard">Verificar área de transferência</string>
     <string name="add_text_dialog_title">Novo texto</string>
     <string name="add_text_hint">Digite ou cole um texto/link</string>
+    <string name="menu_copy">Copiar</string>
+    <string name="menu_edit">Editar</string>
     <string name="text_copied">Copiado para a área de transferência</string>
     <string name="text_saved">Texto salvo</string>
     <string name="text_deleted">Texto excluído</string>
@@ -115,4 +127,13 @@
     <string name="delete_import_source_title">Apagar arquivo original?</string>
     <string name="delete_import_source_msg">Os textos importados já estão criptografados no app. Deseja apagar com segurança o arquivo .txt original (que ainda está em texto puro)?</string>
     <string name="text_empty_error">Digite algum texto primeiro</string>
+
+    <string name="choose_note_type">Escolha o tipo de nota</string>
+    <string name="simple_note">Nota Simples</string>
+    <string name="long_note">Nota Longa/Editor</string>
+    <string name="save">Salvar</string>
+    <string name="edit_note">Editar Nota</string>
+    <string name="new_long_note">Nova Nota Longa</string>
+    <string name="note_saved_success">Nota salva com segurança</string>
+    <string name="error_save_note">Falha ao salvar a nota. Tente novamente.</string>
 </resources>

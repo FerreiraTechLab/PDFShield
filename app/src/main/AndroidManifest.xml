@@ -42,6 +42,11 @@
             android:name="org.ferreiratechlab.leitordepdfseguro.ui.auth.PinEntryActivity"
             android:exported="false" />
 
+        <activity
+            android:name="org.ferreiratechlab.leitordepdfseguro.ui.texts.TextNoteActivity"
+            android:exported="false"
+            android:windowSoftInputMode="adjustResize" />
+
         <provider
             android:name="androidx.core.content.FileProvider"
             android:authorities="${applicationId}.provider"

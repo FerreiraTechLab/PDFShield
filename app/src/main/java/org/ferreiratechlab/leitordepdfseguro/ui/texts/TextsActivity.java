@@ -9,6 +9,7 @@ import android.os.Handler;
 import android.os.Looper;
 import android.text.Editable;
 import android.text.TextWatcher;
+import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.WindowManager;
@@ -20,6 +21,7 @@ import androidx.annotation.NonNull;
 import androidx.appcompat.app.ActionBarDrawerToggle;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.appcompat.widget.PopupMenu;
 import androidx.appcompat.widget.Toolbar;
 import androidx.core.content.ContextCompat;
 import androidx.core.view.GravityCompat;
@@ -66,19 +68,9 @@ public class TextsActivity extends AppCompatActivity {
     /** Tempo até limpar sozinho o clipboard depois de copiar um item salvo. */
     private static final long CLIPBOARD_CLEAR_DELAY_MS = 45_000L;
 
-    /**
-     * Um link não deveria ter quebra de linha; um texto/nota comum pode. Usado só para decidir
-     * se uma quebra de linha é rejeitada (link malformado) ou aceita (nota de várias linhas).
-     */
-    private static final Pattern LINK_PATTERN = Pattern.compile("^(?:https?://|ftp://|www\\.)\\S+$", Pattern.CASE_INSENSITIVE);
-
-    private static boolean looksLikeLink(String candidate) {
-        return LINK_PATTERN.matcher(candidate).matches();
-    }
-
     /** Só rejeita quebra de linha quando o conteúdo parece um link — notas comuns podem ter. */
     private static boolean hasUnsupportedLineBreak(String candidate) {
-        return candidate.contains("\n") && looksLikeLink(candidate);
+        return candidate.contains("\n") && TextsViewModel.isLink(candidate);
     }
 
     private DrawerLayout drawerLayout;
@@ -92,7 +84,6 @@ public class TextsActivity extends AppCompatActivity {
     private AppDatabase db;
     private TextsViewModel textsViewModel;
 
-    private final List<TextsAdapter.TextEntry> allEntries = new ArrayList<>();
     private final Handler clipboardClearHandler = new Handler(Looper.getMainLooper());
 
     @Override
@@ -111,7 +102,6 @@ public class TextsActivity extends AppCompatActivity {
         searchEditText = findViewById(R.id.search_edit_text);
         Toolbar toolbar = findViewById(R.id.toolbar);
         FloatingActionButton addTextFab = findViewById(R.id.add_text_fab);
-        FloatingActionButton clearAllFab = findViewById(R.id.clear_all_texts_fab);
 
         setSupportActionBar(toolbar);
         toolbar.getNavigationIcon().setColorFilter(getResources().getColor(R.color.white), android.graphics.PorterDuff.Mode.SRC_ATOP);
@@ -125,30 +115,27 @@ public class TextsActivity extends AppCompatActivity {
         recyclerView.setLayoutManager(new LinearLayoutManager(this));
         recyclerView.setAdapter(adapter);
         adapter.setOnTextClickListener(this::copyToClipboard);
-        adapter.setOnTextLongClickListener(this::confirmDeleteText);
+        adapter.setOnTextMenuClickListener(this::showTextItemMenu);
+        adapter.setOnTextDoubleClickListener(this::openNoteEditor);
 
-        addTextFab.setOnClickListener(v -> showAddTextDialog());
-        clearAllFab.setOnClickListener(v -> confirmClearAll());
+        addTextFab.setOnClickListener(v -> showNoteTypeChoiceDialog());
 
         setupSearch();
         setupDrawer();
 
         textsViewModel = new ViewModelProvider(this).get(TextsViewModel.class);
-        AppExecutors.background().execute(() -> {
-            textsViewModel.init(db);
-            runOnUiThread(() -> textsViewModel.getTexts().observe(this, savedTexts -> {
-                AppExecutors.background().execute(() -> {
-                    List<TextsAdapter.TextEntry> entries = new ArrayList<>();
-                    for (SavedText savedText : savedTexts) {
-                        entries.add(new TextsAdapter.TextEntry(savedText.id, TextsViewModel.toDisplayString(savedText)));
-                    }
-                    runOnUiThread(() -> {
-                        allEntries.clear();
-                        allEntries.addAll(entries);
-                        applySearchFilter(searchEditText.getText().toString());
-                    });
+        textsViewModel.init(db);
+        textsViewModel.getTexts().observe(this, savedTexts -> {
+            AppExecutors.background().execute(() -> {
+                List<TextsAdapter.TextEntry> entries = new ArrayList<>();
+                for (SavedText savedText : savedTexts) {
+                    entries.add(new TextsAdapter.TextEntry(savedText.id, TextsViewModel.toDisplayString(savedText), savedText.createdAt));
+                }
+                runOnUiThread(() -> {
+                    adapter.updateEntries(entries);
+                    updateEmptyState();
                 });
-            }));
+            });
         });
     }
 
@@ -182,9 +169,27 @@ public class TextsActivity extends AppCompatActivity {
             } else if (id == R.id.nav_check_clipboard) {
                 checkClipboardForNewText();
                 return true;
+            } else if (id == R.id.nav_exit) {
+                finishAffinity();
+                return true;
             }
             return false;
         });
+    }
+
+    @Override
+    public boolean onCreateOptionsMenu(Menu menu) {
+        getMenuInflater().inflate(R.menu.texts_toolbar_menu, menu);
+        return true;
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(@NonNull MenuItem item) {
+        if (item.getItemId() == R.id.action_clear_all) {
+            confirmClearAll();
+            return true;
+        }
+        return super.onOptionsItemSelected(item);
     }
 
     private void setupSearch() {
@@ -195,7 +200,8 @@ public class TextsActivity extends AppCompatActivity {
 
             @Override
             public void onTextChanged(CharSequence s, int start, int before, int count) {
-                applySearchFilter(s.toString());
+                adapter.applyFilter(s.toString());
+                updateEmptyState();
             }
 
             @Override
@@ -204,20 +210,62 @@ public class TextsActivity extends AppCompatActivity {
         });
     }
 
-    private void applySearchFilter(String query) {
-        String normalizedQuery = query.trim().toLowerCase();
-        List<TextsAdapter.TextEntry> filtered = new ArrayList<>();
-        for (TextsAdapter.TextEntry entry : allEntries) {
-            if (normalizedQuery.isEmpty() || entry.content.toLowerCase().contains(normalizedQuery)) {
-                filtered.add(entry);
+    private void showTextItemMenu(TextsAdapter.TextEntry entry, View anchor) {
+        PopupMenu popup = new PopupMenu(this, anchor);
+        popup.inflate(R.menu.text_item_menu);
+        popup.setOnMenuItemClickListener(item -> {
+            int id = item.getItemId();
+            if (id == R.id.menu_copy) {
+                copyToClipboard(entry);
+                return true;
+            } else if (id == R.id.menu_edit) {
+                openNoteEditor(entry);
+                return true;
+            } else if (id == R.id.menu_delete) {
+                confirmDeleteText(entry);
+                return true;
             }
-        }
-        adapter.updateEntries(filtered);
-        updateEmptyState();
+            return false;
+        });
+        popup.show();
+    }
+
+    private void openNoteEditor(TextsAdapter.TextEntry entry) {
+        ReAuthHelper.authenticateAction(this, executor, () -> {
+            Intent intent = new Intent(this, TextNoteActivity.class);
+            intent.putExtra(TextNoteActivity.EXTRA_NOTE_ID, entry.id);
+            startActivity(intent);
+        });
+    }
+
+    private void showNoteTypeChoiceDialog() {
+        String[] options = {getString(R.string.simple_note), getString(R.string.long_note)};
+        new AlertDialog.Builder(this, R.style.CustomDialogTheme)
+                .setTitle(R.string.choose_note_type)
+                .setItems(options, (dialog, which) -> {
+                    if (which == 0) {
+                        showAddTextDialog();
+                    } else {
+                        ReAuthHelper.authenticateAction(this, executor, () -> 
+                            startActivity(new Intent(this, TextNoteActivity.class)));
+                    }
+                })
+                .show();
     }
 
     private void updateEmptyState() {
-        emptyState.setVisibility(allEntries.isEmpty() ? View.VISIBLE : View.GONE);
+        if (adapter == null) return;
+        
+        if (adapter.isEmpty()) {
+            emptyState.setVisibility(View.VISIBLE);
+            recyclerView.setVisibility(View.GONE);
+        } else if (adapter.isFilterEmpty()) {
+            emptyState.setVisibility(View.VISIBLE);
+            recyclerView.setVisibility(View.GONE);
+        } else {
+            emptyState.setVisibility(View.GONE);
+            recyclerView.setVisibility(View.VISIBLE);
+        }
     }
 
     private void copyToClipboard(TextsAdapter.TextEntry entry) {
@@ -458,7 +506,7 @@ public class TextsActivity extends AppCompatActivity {
         AppExecutors.background().execute(() -> {
             try (OutputStream outputStream = getContentResolver().openOutputStream(uri);
                  BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(outputStream, StandardCharsets.UTF_8))) {
-                for (SavedText savedText : db.textDao().getAll()) {
+                for (SavedText savedText : db.textDao().getAllSync()) {
                     String content = TextsViewModel.toDisplayString(savedText);
                     // Quebra de linha real vira \n literal, para não se confundir com o
                     // terminador de entrada nem com quebras de linha só de formatação do arquivo.
