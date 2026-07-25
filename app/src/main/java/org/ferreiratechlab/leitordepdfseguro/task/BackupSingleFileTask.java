@@ -1,69 +1,120 @@
 package org.ferreiratechlab.leitordepdfseguro.task;
 
+import android.app.Activity;
 import android.app.ProgressDialog;
 import android.content.Context;
+import android.content.Intent;
 import android.net.Uri;
-import android.os.AsyncTask;
-import android.os.Environment;
+import android.os.Handler;
+import android.os.Looper;
 import android.widget.Toast;
 
+import androidx.core.content.FileProvider;
+
 import org.ferreiratechlab.leitordepdfseguro.R;
+import org.ferreiratechlab.leitordepdfseguro.utils.AppExecutors;
 import org.ferreiratechlab.leitordepdfseguro.utils.EncryptionUtils;
+import org.ferreiratechlab.leitordepdfseguro.utils.LoggingUtils;
 
 import java.io.File;
+import java.lang.ref.WeakReference;
 
-public class BackupSingleFileTask extends AsyncTask<Void, Void, Boolean> {
-    private Context context;
-    private Uri pdfUri;
+/**
+ * Descriptografa um único PDF em background (usando {@link AppExecutors}) para a
+ * pasta de cache privada do app e entrega o resultado via Share Sheet do Android,
+ * em vez de deixar uma cópia em texto puro permanente em armazenamento público.
+ * A pasta de cache é limpa a cada abertura do app (ver MainActivity#cleanOldTempFiles).
+ */
+public class BackupSingleFileTask {
+    private final Context appContext;
+    private final WeakReference<Activity> activityRef;
+    private final Handler mainHandler = new Handler(Looper.getMainLooper());
+    private final Uri pdfUri;
+    private final String displayTitle;
     private ProgressDialog progressDialog;
+    private File decryptedFile;
 
-    public BackupSingleFileTask(Context context, Uri pdfUri) {
-        this.context = context;
+    public BackupSingleFileTask(Activity activity, Uri pdfUri, String displayTitle) {
+        this.appContext = activity.getApplicationContext();
+        this.activityRef = new WeakReference<>(activity);
         this.pdfUri = pdfUri;
+        this.displayTitle = displayTitle;
     }
 
-    @Override
-    protected void onPreExecute() {
-        progressDialog = new ProgressDialog(context, R.style.CustomDialogTheme);
-        progressDialog.setMessage(context.getString(R.string.backup_progress));
+    private boolean isActivityAlive(Activity activity) {
+        return activity != null && !activity.isFinishing() && !activity.isDestroyed();
+    }
+
+    public void start() {
+        onPreExecute();
+        AppExecutors.background().execute(() -> {
+            boolean result;
+            try {
+                result = doInBackground();
+            } catch (Exception e) {
+                LoggingUtils.logErrorDebug("BackupSingleFile", e);
+                result = false;
+            }
+            boolean finalResult = result;
+            mainHandler.post(() -> onPostExecute(finalResult));
+        });
+    }
+
+    private void onPreExecute() {
+        Activity activity = activityRef.get();
+        if (!isActivityAlive(activity)) {
+            return;
+        }
+        progressDialog = new ProgressDialog(activity, R.style.CustomDialogTheme);
+        progressDialog.setMessage(appContext.getString(R.string.backup_progress));
         progressDialog.setCancelable(false);
         progressDialog.show();
     }
 
-    @Override
-    protected Boolean doInBackground(Void... voids) {
+    private boolean doInBackground() {
         try {
             String filePath = pdfUri.getPath();
             if (filePath != null) {
                 File encryptedFile = new File(filePath);
-                String backupDirPath = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOCUMENTS).getAbsolutePath() + "/BackupPDFs";
-                File backupDir = new File(backupDirPath);
-                if (!backupDir.exists()) {
-                    backupDir.mkdirs();
+                File shareDir = new File(appContext.getCacheDir(), "ShareBackups");
+                if (!shareDir.exists()) {
+                    shareDir.mkdirs();
                 }
-                // Remover a extensão .enc se estiver presente e adicionar .pdf
-                String decryptedFileName = encryptedFile.getName();
-                if (decryptedFileName.endsWith(".enc")) {
-                    decryptedFileName = decryptedFileName.substring(0, decryptedFileName.length() - 4);
-                }
-                decryptedFileName += ".pdf";
-                File decryptedFile = new File(backupDir, decryptedFileName);
-                EncryptionUtils.decryptFile(context, encryptedFile, decryptedFile);
+                // Nome no disco é opaco (UUID); o nome de exibição já decifrado é quem
+                // nomeia o arquivo exportado. O título já inclui ".pdf" (nome original do
+                // arquivo importado), então não adiciona de novo.
+                String exportFileName = displayTitle.toLowerCase().endsWith(".pdf") ? displayTitle : displayTitle + ".pdf";
+                decryptedFile = new File(shareDir, exportFileName);
+                EncryptionUtils.decryptFile(appContext, encryptedFile, decryptedFile);
                 return true;
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            LoggingUtils.logErrorDebug("BackupSingleFile", e);
         }
         return false;
     }
 
-    @Override
-    protected void onPostExecute(Boolean result) {
-        progressDialog.dismiss();
-        if (result) {
-            Toast.makeText(context, R.string.backup_success_single, Toast.LENGTH_SHORT).show();
-        } else {
-            Toast.makeText(context, R.string.backup_error, Toast.LENGTH_SHORT).show();
+    private void onPostExecute(boolean result) {
+        Activity activity = activityRef.get();
+        if (!isActivityAlive(activity)) {
+            return;
         }
+        if (progressDialog != null && progressDialog.isShowing()) {
+            progressDialog.dismiss();
+        }
+        if (result && decryptedFile != null) {
+            shareDecryptedFile(activity, decryptedFile);
+        } else {
+            Toast.makeText(activity, R.string.backup_error, Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    private void shareDecryptedFile(Activity activity, File file) {
+        Uri contentUri = FileProvider.getUriForFile(activity, activity.getPackageName() + ".provider", file);
+        Intent shareIntent = new Intent(Intent.ACTION_SEND);
+        shareIntent.setType("application/pdf");
+        shareIntent.putExtra(Intent.EXTRA_STREAM, contentUri);
+        shareIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+        activity.startActivity(Intent.createChooser(shareIntent, activity.getString(R.string.backup_success_single)));
     }
 }

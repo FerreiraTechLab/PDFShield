@@ -22,9 +22,10 @@ import androidx.core.content.ContextCompat;
 import org.ferreiratechlab.leitordepdfseguro.R;
 import org.ferreiratechlab.leitordepdfseguro.ui.auth.PinEntryActivity;
 import org.ferreiratechlab.leitordepdfseguro.ui.auth.PinSetupActivity;
-import org.ferreiratechlab.leitordepdfseguro.ui.main.MainActivity;
 import org.ferreiratechlab.leitordepdfseguro.utils.KeyManagerUtils;
+import org.ferreiratechlab.leitordepdfseguro.utils.LoggingUtils;
 import org.ferreiratechlab.leitordepdfseguro.utils.PinSecurityUtils;
+import org.ferreiratechlab.leitordepdfseguro.utils.SessionKeyHolder;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -94,14 +95,20 @@ public class WelcomeActivity extends AppCompatActivity {
             
             biometricSwitch.setOnCheckedChangeListener((buttonView, isChecked) -> {
                 if (isChecked) {
-                    showPinVerificationDialog(() -> {
+                    showPinVerificationDialog(enteredPin -> {
                         try {
-                            // Cria a chave vinculada à biometria para monitorar mudanças
-                            KeyManagerUtils.getOrCreateBiometricKey();
-                            prefs.edit().putBoolean("UseBiometrics", true).apply();
-                            Toast.makeText(this, R.string.link_biometrics, Toast.LENGTH_SHORT).show();
+                            // O PIN acabado de verificar desembrulha a DEK, que é então
+                            // reembrulhada com a chave biométrica (prompt real abaixo) para
+                            // que o desbloqueio por biometria também consiga destravar os
+                            // arquivos, sem nunca precisar do PIN em texto.
+                            byte[] dek = PinSecurityUtils.unwrapDekForPin(prefs, enteredPin);
+                            SessionKeyHolder.set(dek);
+                            enrollBiometricWrap(prefs, dek);
                         } catch (Exception e) {
-                            e.printStackTrace();
+                            LoggingUtils.logErrorDebug("Welcome", e);
+                            biometricSwitch.setOnCheckedChangeListener(null);
+                            biometricSwitch.setChecked(false);
+                            setupBiometricToggle(prefs);
                         }
                     }, () -> {
                         biometricSwitch.setOnCheckedChangeListener(null);
@@ -110,12 +117,71 @@ public class WelcomeActivity extends AppCompatActivity {
                     });
                 } else {
                     prefs.edit().putBoolean("UseBiometrics", false).apply();
+                    PinSecurityUtils.clearBiometricWrappedDek(prefs);
                 }
             });
         }
     }
 
-    private void showPinVerificationDialog(Runnable onSuccess, Runnable onCancel) {
+    /** Callback com o PIN que acabou de ser verificado em {@link #showPinVerificationDialog}. */
+    private interface PinVerifiedCallback {
+        void onVerified(String pin);
+    }
+
+    /**
+     * Dispara um BiometricPrompt real (ENCRYPT_MODE) para embrulhar a DEK com a chave
+     * biométrica do Keystore, espelhando PinSetupActivity#enrollBiometricsAndFinish.
+     */
+    private void enrollBiometricWrap(SharedPreferences prefs, byte[] dek) {
+        Cipher cipher;
+        try {
+            cipher = KeyManagerUtils.getBiometricEncryptCipherOrThrow();
+        } catch (Exception e) {
+            LoggingUtils.logErrorDebug("Welcome", e);
+            biometricSwitch.setOnCheckedChangeListener(null);
+            biometricSwitch.setChecked(false);
+            setupBiometricToggle(prefs);
+            return;
+        }
+
+        Executor executor = ContextCompat.getMainExecutor(this);
+        BiometricPrompt biometricPrompt = new BiometricPrompt(this, executor, new BiometricPrompt.AuthenticationCallback() {
+            @Override
+            public void onAuthenticationSucceeded(@NonNull BiometricPrompt.AuthenticationResult result) {
+                super.onAuthenticationSucceeded(result);
+                try {
+                    Cipher authedCipher = result.getCryptoObject().getCipher();
+                    byte[] ciphertext = authedCipher.doFinal(dek);
+                    byte[] iv = authedCipher.getIV();
+                    PinSecurityUtils.saveBiometricWrappedDek(prefs, new KeyManagerUtils.WrappedBytes(ciphertext, iv));
+                    prefs.edit().putBoolean("UseBiometrics", true).apply();
+                    Toast.makeText(WelcomeActivity.this, R.string.link_biometrics, Toast.LENGTH_SHORT).show();
+                } catch (Exception e) {
+                    LoggingUtils.logErrorDebug("Welcome", e);
+                    biometricSwitch.setOnCheckedChangeListener(null);
+                    biometricSwitch.setChecked(false);
+                    setupBiometricToggle(prefs);
+                }
+            }
+
+            @Override
+            public void onAuthenticationError(int errorCode, @NonNull CharSequence errString) {
+                super.onAuthenticationError(errorCode, errString);
+                biometricSwitch.setOnCheckedChangeListener(null);
+                biometricSwitch.setChecked(false);
+                setupBiometricToggle(prefs);
+            }
+        });
+
+        BiometricPrompt.PromptInfo promptInfo = new BiometricPrompt.PromptInfo.Builder()
+                .setTitle(getString(R.string.biometric_auth_title))
+                .setSubtitle(getString(R.string.link_biometrics))
+                .setNegativeButtonText(getString(R.string.cancel))
+                .build();
+        biometricPrompt.authenticate(promptInfo, new BiometricPrompt.CryptoObject(cipher));
+    }
+
+    private void showPinVerificationDialog(PinVerifiedCallback onSuccess, Runnable onCancel) {
         SharedPreferences prefs = getSharedPreferences("AuthPrefs", MODE_PRIVATE);
         AlertDialog.Builder builder = new AlertDialog.Builder(this, R.style.CustomDialogTheme);
         View dialogView = getLayoutInflater().inflate(R.layout.dialog_pin_verify, null);
@@ -143,9 +209,10 @@ public class WelcomeActivity extends AppCompatActivity {
                         dots[i].setBackgroundResource(i < inputPin.size() ? R.drawable.pin_dot_filled : R.drawable.pin_dot_empty);
                     }
                     if (inputPin.size() == 6) {
-                        if (PinSecurityUtils.verifyAndMigratePin(prefs, String.join("", inputPin))) {
+                        String enteredPin = String.join("", inputPin);
+                        if (PinSecurityUtils.verifyAndMigratePin(prefs, enteredPin)) {
                             dialog.dismiss();
-                            onSuccess.run();
+                            onSuccess.onVerified(enteredPin);
                         } else {
                             Toast.makeText(this, R.string.invalid_pin, Toast.LENGTH_SHORT).show();
                             inputPin.clear();
@@ -173,17 +240,24 @@ public class WelcomeActivity extends AppCompatActivity {
 
     private void handleLogin(SharedPreferences prefs) {
         boolean useBiometrics = prefs.getBoolean("UseBiometrics", false);
-        
+
         if (useBiometrics) {
+            KeyManagerUtils.WrappedBytes wrapped = PinSecurityUtils.getBiometricWrappedDek(prefs);
+            if (wrapped == null) {
+                // Estado inconsistente (biometria ligada sem DEK embrulhada) — cai para o PIN.
+                startActivity(new Intent(this, PinEntryActivity.class));
+                finish();
+                return;
+            }
             try {
-                Cipher cipher = KeyManagerUtils.getBiometricCipherOrThrow();
-                
-                triggerBiometrics(cipher);
+                Cipher cipher = KeyManagerUtils.getBiometricDecryptCipherOrThrow(wrapped.iv);
+                triggerBiometrics(cipher, wrapped.ciphertext);
             } catch (Exception e) {
                 if (KeyManagerUtils.isBiometricEnrollmentInvalidated(e)) {
                     prefs.edit().putBoolean("UseBiometrics", false).apply();
+                    PinSecurityUtils.clearBiometricWrappedDek(prefs);
                     Toast.makeText(this, R.string.biometric_invalidated, Toast.LENGTH_LONG).show();
-                    
+
                     biometricSwitch.setOnCheckedChangeListener(null);
                     biometricSwitch.setChecked(false);
                     setupBiometricToggle(prefs);
@@ -198,13 +272,20 @@ public class WelcomeActivity extends AppCompatActivity {
         }
     }
 
-    private void triggerBiometrics(Cipher cipher) {
+    private void triggerBiometrics(Cipher cipher, byte[] wrappedDekCiphertext) {
         Executor executor = ContextCompat.getMainExecutor(this);
         BiometricPrompt biometricPrompt = new BiometricPrompt(this, executor, new BiometricPrompt.AuthenticationCallback() {
             @Override
             public void onAuthenticationSucceeded(@NonNull BiometricPrompt.AuthenticationResult result) {
                 super.onAuthenticationSucceeded(result);
-                startActivity(new Intent(WelcomeActivity.this, MainActivity.class));
+                try {
+                    Cipher authedCipher = result.getCryptoObject().getCipher();
+                    SessionKeyHolder.set(authedCipher.doFinal(wrappedDekCiphertext));
+                    startActivity(new Intent(WelcomeActivity.this, org.ferreiratechlab.leitordepdfseguro.ui.home.HomeActivity.class));
+                } catch (Exception e) {
+                    LoggingUtils.logErrorDebug("Welcome", e);
+                    startActivity(new Intent(WelcomeActivity.this, PinEntryActivity.class));
+                }
                 finish();
             }
 
@@ -228,7 +309,7 @@ public class WelcomeActivity extends AppCompatActivity {
 
     private boolean isBiometricKeyAvailable() {
         try {
-            KeyManagerUtils.getBiometricCipherOrThrow();
+            KeyManagerUtils.getBiometricEncryptCipherOrThrow();
             return true;
         } catch (Exception e) {
             return false;

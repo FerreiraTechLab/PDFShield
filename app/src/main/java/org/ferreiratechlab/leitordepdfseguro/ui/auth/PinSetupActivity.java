@@ -7,14 +7,22 @@ import android.view.View;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.biometric.BiometricPrompt;
+import androidx.core.content.ContextCompat;
 
 import org.ferreiratechlab.leitordepdfseguro.R;
-import org.ferreiratechlab.leitordepdfseguro.ui.main.MainActivity;
+import org.ferreiratechlab.leitordepdfseguro.utils.KeyManagerUtils;
+import org.ferreiratechlab.leitordepdfseguro.utils.LoggingUtils;
 import org.ferreiratechlab.leitordepdfseguro.utils.PinSecurityUtils;
+import org.ferreiratechlab.leitordepdfseguro.utils.SessionKeyHolder;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.Executor;
+
+import javax.crypto.Cipher;
 
 public class PinSetupActivity extends AppCompatActivity {
 
@@ -100,14 +108,24 @@ public class PinSetupActivity extends AppCompatActivity {
         SharedPreferences prefs = getSharedPreferences("AuthPrefs", MODE_PRIVATE);
         PinSecurityUtils.savePin(prefs, pinStr);
 
+        // Gera a DEK de criptografia de arquivos e a embrulha com uma chave derivada
+        // deste PIN. Sem isso, MainActivity não conseguiria descriptografar nada
+        // (EncryptionUtils exige uma DEK carregada em SessionKeyHolder).
+        byte[] dek;
+        try {
+            dek = PinSecurityUtils.createAndWrapDekForPin(prefs, pinStr);
+            SessionKeyHolder.set(dek);
+        } catch (Exception e) {
+            LoggingUtils.logErrorDebug("PinSetup", e);
+            Toast.makeText(this, R.string.pin_setup_error, Toast.LENGTH_LONG).show();
+            return;
+        }
+
         // Pergunta se deseja vincular biometria
         androidx.appcompat.app.AlertDialog.Builder builder = new androidx.appcompat.app.AlertDialog.Builder(this, R.style.CustomDialogTheme);
         builder.setTitle(R.string.link_biometrics);
         builder.setMessage(R.string.link_biometrics_msg);
-        builder.setPositiveButton(R.string.yes, (dialog, which) -> {
-            prefs.edit().putBoolean("UseBiometrics", true).apply();
-            goToMain();
-        });
+        builder.setPositiveButton(R.string.yes, (dialog, which) -> enrollBiometricsAndFinish(prefs, dek));
         builder.setNegativeButton(R.string.no, (dialog, which) -> {
             prefs.edit().putBoolean("UseBiometrics", false).apply();
             goToMain();
@@ -116,9 +134,59 @@ public class PinSetupActivity extends AppCompatActivity {
         builder.show();
     }
 
+    /**
+     * Dispara um BiometricPrompt real (ENCRYPT_MODE) para embrulhar a DEK com a chave
+     * biométrica do Keystore, para que o desbloqueio por biometria (WelcomeActivity /
+     * PinEntryActivity) consiga destravar os arquivos sem nunca ter o PIN em texto.
+     */
+    private void enrollBiometricsAndFinish(SharedPreferences prefs, byte[] dek) {
+        Cipher cipher;
+        try {
+            cipher = KeyManagerUtils.getBiometricEncryptCipherOrThrow();
+        } catch (Exception e) {
+            LoggingUtils.logErrorDebug("PinSetup", e);
+            prefs.edit().putBoolean("UseBiometrics", false).apply();
+            goToMain();
+            return;
+        }
+
+        Executor executor = ContextCompat.getMainExecutor(this);
+        BiometricPrompt biometricPrompt = new BiometricPrompt(this, executor, new BiometricPrompt.AuthenticationCallback() {
+            @Override
+            public void onAuthenticationSucceeded(@NonNull BiometricPrompt.AuthenticationResult result) {
+                super.onAuthenticationSucceeded(result);
+                try {
+                    Cipher authedCipher = result.getCryptoObject().getCipher();
+                    byte[] ciphertext = authedCipher.doFinal(dek);
+                    byte[] iv = authedCipher.getIV();
+                    PinSecurityUtils.saveBiometricWrappedDek(prefs, new KeyManagerUtils.WrappedBytes(ciphertext, iv));
+                    prefs.edit().putBoolean("UseBiometrics", true).apply();
+                } catch (Exception e) {
+                    LoggingUtils.logErrorDebug("PinSetup", e);
+                    prefs.edit().putBoolean("UseBiometrics", false).apply();
+                }
+                goToMain();
+            }
+
+            @Override
+            public void onAuthenticationError(int errorCode, @NonNull CharSequence errString) {
+                super.onAuthenticationError(errorCode, errString);
+                prefs.edit().putBoolean("UseBiometrics", false).apply();
+                goToMain();
+            }
+        });
+
+        BiometricPrompt.PromptInfo promptInfo = new BiometricPrompt.PromptInfo.Builder()
+                .setTitle(getString(R.string.biometric_auth_title))
+                .setSubtitle(getString(R.string.link_biometrics))
+                .setNegativeButtonText(getString(R.string.cancel))
+                .build();
+        biometricPrompt.authenticate(promptInfo, new BiometricPrompt.CryptoObject(cipher));
+    }
+
     private void goToMain() {
         Toast.makeText(this, R.string.pin_setup_success, Toast.LENGTH_SHORT).show();
-        startActivity(new Intent(this, MainActivity.class));
+        startActivity(new Intent(this, org.ferreiratechlab.leitordepdfseguro.ui.home.HomeActivity.class));
         finish();
     }
 }

@@ -18,6 +18,12 @@
             android:name="org.ferreiratechlab.leitordepdfseguro.ui.main.MainActivity"
             android:exported="false" />
         <activity
+            android:name="org.ferreiratechlab.leitordepdfseguro.ui.texts.TextsActivity"
+            android:exported="false" />
+        <activity
+            android:name="org.ferreiratechlab.leitordepdfseguro.ui.home.HomeActivity"
+            android:exported="false" />
+        <activity
             android:name="org.ferreiratechlab.leitordepdfseguro.ui.display.PdfDisplayActivity"
             android:exported="false" />
         <activity

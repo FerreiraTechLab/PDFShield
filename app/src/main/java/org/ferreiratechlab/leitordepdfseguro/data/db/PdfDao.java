@@ -19,14 +19,26 @@ public interface PdfDao {
     @Insert
     void insertAll(Pdf... pdfs);
 
-    @Query("SELECT * FROM Pdf WHERE filename = :filename")
-    Pdf getPdfByFilename(String filename);
+    @Query("SELECT COUNT(*) FROM Pdf WHERE keyVersion = 1")
+    int countLegacyKeyVersionPdfs();
+
+    @Query("SELECT * FROM Pdf WHERE keyVersion = 1")
+    List<Pdf> getLegacyKeyVersionPdfs();
+
+    @Query("SELECT COUNT(*) FROM Pdf WHERE metadataVersion = 1")
+    int countLegacyMetadataVersionPdfs();
+
+    @Query("SELECT * FROM Pdf WHERE metadataVersion = 1")
+    List<Pdf> getLegacyMetadataVersionPdfs();
 
     @Update
     void update(Pdf pdf);
 
     @Delete
     void delete(Pdf pdf);
+
+    @Query("DELETE FROM Pdf WHERE id = :id")
+    void deleteById(int id);
 
     @Query("DELETE FROM Pdf")
     void deleteAll();

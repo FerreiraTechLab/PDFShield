@@ -37,10 +37,9 @@
     <string name="remove_pdf_title">Remove PDF</string>
     <string name="remove_pdf_msg">Do you want to remove this PDF from the list? The original file will be overwritten with zeros and will be IMPOSSIBLE to recover.</string>
     <string name="security_warning_title">Security Warning</string>
-    <string name="backup_warning_msg">Performing a backup will decrypt your files and leave them exposed. Do you want to continue?</string>
-    <string name="backup_progress">Performing Backup...</string>
-    <string name="backup_success">Backup completed successfully.\nBackups saved at: %s</string>
-    <string name="backup_success_single">Backup performed successfully</string>
+    <string name="backup_warning_msg">This will decrypt your files so you can save or share them outside PDFShield. The decrypted copy stays only in the app\'s private cache until you pick a destination. Do you want to continue?</string>
+    <string name="backup_progress">Decrypting for backup…</string>
+    <string name="backup_success_single">Share decrypted PDF</string>
     <string name="backup_error">Error performing backup</string>
     <string name="pdf_removed_success">PDF removed successfully</string>
     <string name="all_pdfs_removed_success">All PDFs removed successfully</string>
@@ -70,10 +69,50 @@
     <string name="pin_mismatch">PINs do not match. Try again.</string>
     <string name="enter_pin">Enter PIN</string>
     <string name="invalid_pin">Incorrect PIN. Try again.</string>
+    <string name="pin_locked_out">Too many incorrect attempts. Try again in %1$s.</string>
     <string name="pin_setup_success">PIN set up successfully</string>
+    <string name="pin_setup_error">Failed to set up encryption. Please try again.</string>
+    <string name="migrating_encryption">Upgrading file encryption…</string>
     <string name="link_biometrics">Link Biometrics</string>
     <string name="link_biometrics_msg">Do you want to use your fingerprint to unlock the app? (You will still need your PIN if biometrics fail)</string>
     <string name="yes">Yes</string>
     <string name="no">No</string>
     <string name="biometric_toggle_label">Enable Fingerprint Login</string>
+
+    <!-- Home (post-login module chooser) -->
+    <string name="home_choose_title">What do you want to open?</string>
+    <string name="home_pdfs_option">PDFs</string>
+    <string name="home_texts_option">Texts</string>
+
+    <!-- Saved Texts module -->
+    <string name="texts_title">Saved Texts</string>
+    <string name="search_hint">Search…</string>
+    <string name="no_texts">No saved texts</string>
+    <string name="add_text">Add text</string>
+    <string name="clear_all_texts">Clear all</string>
+    <string name="nav_switch_to_pdfs">View PDFs</string>
+    <string name="nav_switch_to_texts">View Texts</string>
+    <string name="nav_import_texts">Import texts</string>
+    <string name="nav_export_texts">Export texts</string>
+    <string name="nav_check_clipboard">Check clipboard</string>
+    <string name="add_text_dialog_title">New text</string>
+    <string name="add_text_hint">Type or paste a text/link</string>
+    <string name="text_copied">Copied to clipboard</string>
+    <string name="text_saved">Text saved</string>
+    <string name="text_deleted">Text deleted</string>
+    <string name="clipboard_save_title">Save from clipboard?</string>
+    <string name="clipboard_save_msg">We found this in your clipboard:\n\n\"%s\"\n\nSave it?</string>
+    <string name="delete_text_title">Delete text</string>
+    <string name="delete_text_msg">Delete this text?</string>
+    <string name="clear_all_texts_title">Clear all texts</string>
+    <string name="clear_all_texts_msg">This will delete all saved texts. This action cannot be undone.</string>
+    <string name="multiline_not_supported">Links can\'t contain line breaks.</string>
+    <string name="text_already_saved">This text is already saved</string>
+    <string name="import_texts_success">%d text(s) imported</string>
+    <string name="export_texts_success">Texts exported successfully</string>
+    <string name="import_export_error">Error importing/exporting texts</string>
+    <string name="export_texts_warning_msg">This will create a plain-text .txt file with all your saved texts, unencrypted, wherever you choose to save it. Do you want to continue?</string>
+    <string name="delete_import_source_title">Delete original file?</string>
+    <string name="delete_import_source_msg">The imported texts are now encrypted in the app. Do you want to securely delete the original .txt file (still in plain text)?</string>
+    <string name="text_empty_error">Enter some text first</string>
 </resources>

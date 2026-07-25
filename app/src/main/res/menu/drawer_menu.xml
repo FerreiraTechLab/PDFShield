@@ -16,6 +16,11 @@
             android:title="@string/nav_privacy" />
 
         <item
+            android:id="@+id/nav_switch_to_texts"
+            android:icon="@drawable/baseline_enhanced_encryption_24"
+            android:title="@string/nav_switch_to_texts" />
+
+        <item
             android:id="@+id/nav_item_backup"
             android:title="@string/nav_backup"
             android:icon="@drawable/ic_backup"/>

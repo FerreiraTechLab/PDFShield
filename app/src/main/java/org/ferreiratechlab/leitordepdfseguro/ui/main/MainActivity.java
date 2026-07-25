@@ -16,7 +16,6 @@ import android.graphics.PorterDuff;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
-import android.os.Environment;
 import android.os.Handler;
 import android.provider.MediaStore;
 import android.provider.Settings;
@@ -33,8 +32,6 @@ import androidx.appcompat.app.ActionBarDrawerToggle;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
-import androidx.biometric.BiometricManager;
-import androidx.biometric.BiometricPrompt;
 import androidx.cardview.widget.CardView;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
@@ -44,25 +41,25 @@ import androidx.drawerlayout.widget.DrawerLayout;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
-import androidx.room.Room;
 
 import com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.google.android.material.navigation.NavigationView;
 
 import org.ferreiratechlab.leitordepdfseguro.data.db.AppDatabase;
+import org.ferreiratechlab.leitordepdfseguro.ui.auth.ReAuthHelper;
 import org.ferreiratechlab.leitordepdfseguro.data.model.Pdf;
-import org.ferreiratechlab.leitordepdfseguro.service.EncryptionService;
 import org.ferreiratechlab.leitordepdfseguro.task.BackupSingleFileTask;
 import org.ferreiratechlab.leitordepdfseguro.task.PdfEncryptionTask;
 import org.ferreiratechlab.leitordepdfseguro.ui.display.PdfDisplayActivity;
 import org.ferreiratechlab.leitordepdfseguro.ui.display.PdfDocumentWrapper;
 import org.ferreiratechlab.leitordepdfseguro.ui.display.PdfViewModel;
 import org.ferreiratechlab.leitordepdfseguro.R;
+import org.ferreiratechlab.leitordepdfseguro.utils.AppExecutors;
 import org.ferreiratechlab.leitordepdfseguro.utils.EncryptionUtils;
 import org.ferreiratechlab.leitordepdfseguro.utils.KeyManagerUtils;
-import org.ferreiratechlab.leitordepdfseguro.utils.PinSecurityUtils;
 import org.ferreiratechlab.leitordepdfseguro.utils.LoggingUtils;
+import org.ferreiratechlab.leitordepdfseguro.utils.SessionKeyHolder;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -75,8 +72,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.Executor;
-
-import javax.crypto.Cipher;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -98,8 +93,9 @@ public class MainActivity extends AppCompatActivity {
 
 
     // No início da classe MainActivity
-    private EncryptionService encryptionService;
     private Executor executor;
+    private PdfEncryptionTask currentEncryptionTask;
+    private ProgressDialog migrationProgressDialog;
 
     MenuItem menu;
 
@@ -118,7 +114,6 @@ public class MainActivity extends AppCompatActivity {
         toolbar = findViewById(R.id.toolbar);
         navigationView = findViewById(R.id.nav_view);
         drawerLayout = findViewById(R.id.drawer_layout);
-        encryptionService = new EncryptionService(this);
         executor = ContextCompat.getMainExecutor(this);
         ensureReadPermission();
 
@@ -143,24 +138,28 @@ public class MainActivity extends AppCompatActivity {
 
         });
 
-        db = Room.databaseBuilder(getApplicationContext(), AppDatabase.class, "database-name")
-                .build();
+        db = AppDatabase.getInstance(this);
+        migrateLegacyEncryptedFilesIfNeeded();
+        migrateLegacyMetadataIfNeeded();
 
         pdfViewModel = new ViewModelProvider(this).get(PdfViewModel.class);
 
-        new Thread(() -> {
+        // Roda no mesmo executor único das migrações (ver migrateLegacyEncryptedFilesIfNeeded /
+        // migrateLegacyMetadataIfNeeded), para nunca ler uma linha entre o rename físico do
+        // arquivo no disco e o commit do novo caminho no banco.
+        AppExecutors.background().execute(() -> {
             pdfViewModel.init(db);
             runOnUiThread(() -> {
                 pdfViewModel.getPdfs().observe(MainActivity.this, savedPdfs -> {
                     pdfDocuments.clear();
                     for (Pdf pdf : savedPdfs) {
-                        pdfDocuments.add(new PdfDocumentWrapper(Uri.parse(pdf.uri), pdf.title));
+                        pdfDocuments.add(PdfViewModel.toWrapper(pdf));
                     }
                     pdfAdapter.notifyDataSetChanged();
                     updateEmptyState();
                 });
             });
-        }).start();
+        });
 
         setSupportActionBar(toolbar);
         // Mudar a cor do ícone de navegação
@@ -182,6 +181,11 @@ public class MainActivity extends AppCompatActivity {
                 } else if (id == R.id.nav_delete_all){
                     authenticateAction(MainActivity.this::showDeleteAllConfirmationDialog);
                     drawerLayout.closeDrawer(GravityCompat.START);
+                    return true;
+                } else if (id == R.id.nav_switch_to_texts) {
+                    drawerLayout.closeDrawer(GravityCompat.START);
+                    startActivity(new Intent(MainActivity.this, org.ferreiratechlab.leitordepdfseguro.ui.texts.TextsActivity.class));
+                    finish();
                     return true;
                 }
 
@@ -294,7 +298,8 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void backupSingleFile(int position) {
-        new BackupSingleFileTask(this, pdfDocuments.get(position).getUri()).execute();
+        PdfDocumentWrapper pdfDocumentWrapper = pdfDocuments.get(position);
+        new BackupSingleFileTask(this, pdfDocumentWrapper.getUri(), pdfDocumentWrapper.getTitle()).start();
     }
     private void removePdfFromListAndDatabase(int position) {
         PdfDocumentWrapper pdfDocumentWrapper = pdfDocuments.get(position);
@@ -315,7 +320,7 @@ public class MainActivity extends AppCompatActivity {
             runOnUiThread(() -> {
                 pdfDocuments.remove(position);
                 pdfAdapter.notifyItemRemoved(position);
-                pdfViewModel.deletePdf(pdfDocumentWrapper.getTitle());
+                pdfViewModel.deletePdf(pdfDocumentWrapper.getId());
                 updateEmptyState();
                 Toast.makeText(MainActivity.this, "PDF removido com sucesso", Toast.LENGTH_SHORT).show();
             });
@@ -397,20 +402,30 @@ public class MainActivity extends AppCompatActivity {
         progressDialog.setMax(100);
         progressDialog.show();
 
-        new Thread(() -> {
+        AppExecutors.background().execute(() -> {
             List<Pdf> pdfs = db.pdfDao().getAll(); // Obter todos os PDFs do banco de dados
-            File backupDir = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOCUMENTS), "BackupPDFs");
-            if (!backupDir.exists()) {
-                backupDir.mkdirs();
+            // Descriptografa para a pasta privada de cache do app (não é acessível por outros
+            // apps); a entrega final acontece via Share Sheet, sem deixar cópia em texto puro
+            // permanente. cleanOldTempFiles() varre esta pasta a cada abertura do app.
+            File shareDir = new File(getCacheDir(), "ShareBackups");
+            if (!shareDir.exists()) {
+                shareDir.mkdirs();
             }
 
+            runOnUiThread(() -> progressDialog.setMax(Math.max(pdfs.size(), 1)));
+
+            ArrayList<Uri> shareUris = new ArrayList<>();
             int progress = 0;
             for (Pdf pdf : pdfs) {
                 File encryptedFile = new File(pdf.getUri());
-                File decryptedFile = new File(backupDir, pdf.getTitle() + ".pdf");
+                String displayTitle = PdfViewModel.toWrapper(pdf).getTitle();
+                // O título já inclui ".pdf" (nome original do arquivo importado).
+                String exportFileName = displayTitle.toLowerCase().endsWith(".pdf") ? displayTitle : displayTitle + ".pdf";
+                File decryptedFile = new File(shareDir, exportFileName);
 
                 try {
                     EncryptionUtils.decryptFile(MainActivity.this, encryptedFile, decryptedFile);
+                    shareUris.add(FileProvider.getUriForFile(MainActivity.this, getPackageName() + ".provider", decryptedFile));
                 } catch (Exception e) {
                     LoggingUtils.logErrorDebug("backup", e);
                 }
@@ -420,17 +435,34 @@ public class MainActivity extends AppCompatActivity {
                 runOnUiThread(() -> progressDialog.setProgress(currentProgress));
             }
 
-            // Dismiss progressDialog na UI thread após o backup
             runOnUiThread(() -> {
                 progressDialog.dismiss();
-                Toast.makeText(MainActivity.this, getString(R.string.backup_success, backupDir.getAbsolutePath()), Toast.LENGTH_LONG).show();
+                if (shareUris.isEmpty()) {
+                    Toast.makeText(MainActivity.this, R.string.backup_error, Toast.LENGTH_SHORT).show();
+                    return;
+                }
+                Intent shareIntent = new Intent(Intent.ACTION_SEND_MULTIPLE);
+                shareIntent.setType("application/pdf");
+                shareIntent.putParcelableArrayListExtra(Intent.EXTRA_STREAM, shareUris);
+                shareIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+                startActivity(Intent.createChooser(shareIntent, getString(R.string.backup_success_single)));
             });
-        }).start();
+        });
     }
 
     private void encryptFilesInBackground(List<PdfEncryptionTask.EncryptionItem> itemsToEncrypt) {
-        PdfEncryptionTask task = new PdfEncryptionTask(this, itemsToEncrypt, db);
-        task.execute();
+        currentEncryptionTask = new PdfEncryptionTask(this, itemsToEncrypt, db);
+        currentEncryptionTask.start();
+    }
+
+    @Override
+    protected void onDestroy() {
+        if (currentEncryptionTask != null) {
+            // Libera a thread de background caso ela esteja bloqueada aguardando
+            // resposta do diálogo de sobrescrita, evitando vazar a Activity/thread.
+            currentEncryptionTask.cancelDueToLifecycle();
+        }
+        super.onDestroy();
     }
 
     public void updatePdfListFromDatabase() {
@@ -573,9 +605,15 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void cleanOldTempFiles() {
-        File tempDir = new File(getCacheDir(), "DecryptedPDFs");
-        if (tempDir.exists() && tempDir.isDirectory()) {
-            File[] files = tempDir.listFiles();
+        deleteFilesInDir(new File(getCacheDir(), "DecryptedPDFs"));
+        // Cópias descriptografadas geradas para a Share Sheet do backup (ver performBackup()
+        // e BackupSingleFileTask); ficam em cache privado do app até o próximo start.
+        deleteFilesInDir(new File(getCacheDir(), "ShareBackups"));
+    }
+
+    private void deleteFilesInDir(File dir) {
+        if (dir.exists() && dir.isDirectory()) {
+            File[] files = dir.listFiles();
             if (files != null) {
                 for (File file : files) {
                     EncryptionUtils.secureDelete(file);
@@ -584,109 +622,135 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    private void authenticateAction(Runnable onAuthenticated) {
-        SharedPreferences prefs = getSharedPreferences("AuthPrefs", MODE_PRIVATE);
-        boolean useBiometrics = prefs.getBoolean("UseBiometrics", false);
-
-        if (useBiometrics) {
-            BiometricManager biometricManager = BiometricManager.from(this);
-            if (biometricManager.canAuthenticate(BiometricManager.Authenticators.BIOMETRIC_STRONG) == BiometricManager.BIOMETRIC_SUCCESS) {
-                final Cipher cipher;
-                try {
-                    cipher = KeyManagerUtils.getBiometricCipherOrThrow();
-                } catch (Exception e) {
-                    if (KeyManagerUtils.isBiometricEnrollmentInvalidated(e)) {
-                        prefs.edit().putBoolean("UseBiometrics", false).apply();
-                        Toast.makeText(this, R.string.biometric_invalidated, Toast.LENGTH_LONG).show();
-                    }
-                    showPinVerificationDialog(onAuthenticated);
-                    return;
-                }
-
-                BiometricPrompt biometricPrompt = new BiometricPrompt(this, executor, new BiometricPrompt.AuthenticationCallback() {
-                    @Override
-                    public void onAuthenticationSucceeded(@NonNull BiometricPrompt.AuthenticationResult result) {
-                        super.onAuthenticationSucceeded(result);
-                        runOnUiThread(onAuthenticated);
-                    }
-
-                    @Override
-                    public void onAuthenticationError(int errorCode, @NonNull CharSequence errString) {
-                        super.onAuthenticationError(errorCode, errString);
-                        // Se falhar biometria, tenta o PIN interno
-                        showPinVerificationDialog(onAuthenticated);
-                    }
-                });
-
-                BiometricPrompt.PromptInfo promptInfo = new BiometricPrompt.PromptInfo.Builder()
-                        .setTitle(getString(R.string.biometric_auth_title))
-                        .setSubtitle(getString(R.string.auth_required_action))
-                        .setNegativeButtonText(getString(R.string.enter_pin))
-                        .build();
-
-                biometricPrompt.authenticate(promptInfo, new BiometricPrompt.CryptoObject(cipher));
+    /**
+     * Re-criptografa em background todo PDF ainda protegido pela chave legada do Keystore
+     * (Pdf#keyVersion == 1, sem gate de autenticação) usando a DEK amarrada ao PIN/biometria
+     * desta sessão (já carregada em SessionKeyHolder por PinEntryActivity/WelcomeActivity
+     * antes de chegarmos aqui). Resumível por linha: se o app for encerrado no meio, arquivos
+     * já migrados (keyVersion=2) não são reprocessados na próxima abertura.
+     */
+    private void migrateLegacyEncryptedFilesIfNeeded() {
+        AppExecutors.background().execute(() -> {
+            int legacyCount;
+            try {
+                legacyCount = db.pdfDao().countLegacyKeyVersionPdfs();
+            } catch (Exception e) {
+                LoggingUtils.logErrorDebug("Migration", e);
                 return;
             }
-        }
-        
-        // Se não usar biometria ou sensor não disponível, pede PIN
-        showPinVerificationDialog(onAuthenticated);
+            if (legacyCount == 0) {
+                return;
+            }
+
+            runOnUiThread(() -> {
+                addPdfFab.setEnabled(false);
+                migrationProgressDialog = new ProgressDialog(this, R.style.CustomDialogTheme);
+                migrationProgressDialog.setMessage(getString(R.string.migrating_encryption));
+                migrationProgressDialog.setProgressStyle(ProgressDialog.STYLE_HORIZONTAL);
+                migrationProgressDialog.setMax(legacyCount);
+                migrationProgressDialog.setCancelable(false);
+                migrationProgressDialog.show();
+            });
+
+            List<Pdf> legacyPdfs = db.pdfDao().getLegacyKeyVersionPdfs();
+            int migrated = 0;
+            for (Pdf pdf : legacyPdfs) {
+                try {
+                    migrateSingleFile(pdf);
+                } catch (Exception e) {
+                    LoggingUtils.logErrorDebug("Migration", e);
+                    // keyVersion permanece 1: será retomado na próxima abertura do app.
+                }
+                final int progress = ++migrated;
+                runOnUiThread(() -> {
+                    if (migrationProgressDialog != null) {
+                        migrationProgressDialog.setProgress(progress);
+                    }
+                });
+            }
+
+            runOnUiThread(() -> {
+                if (migrationProgressDialog != null && migrationProgressDialog.isShowing()) {
+                    migrationProgressDialog.dismiss();
+                }
+                addPdfFab.setEnabled(true);
+            });
+        });
     }
 
-    private void showPinVerificationDialog(Runnable onSuccess) {
-        SharedPreferences prefs = getSharedPreferences("AuthPrefs", MODE_PRIVATE);
-        AlertDialog.Builder builder = new AlertDialog.Builder(this, R.style.CustomDialogTheme);
-        View dialogView = getLayoutInflater().inflate(R.layout.dialog_pin_verify, null);
-        builder.setView(dialogView);
-        
-        AlertDialog dialog = builder.create();
-        
-        List<String> inputPin = new ArrayList<>();
-        View[] dots = new View[6];
-        LinearLayout dotContainer = dialogView.findViewById(R.id.dialog_dot_container);
-        for (int i = 0; i < 6; i++) {
-            dots[i] = dotContainer.getChildAt(i);
+    private void migrateSingleFile(Pdf pdf) throws Exception {
+        File encryptedFile = new File(pdf.getUri());
+        File tempPlain = File.createTempFile("migrate_", ".pdf", getCacheDir());
+        File newEncrypted = new File(encryptedFile.getParentFile(), encryptedFile.getName() + ".new");
+        try {
+            EncryptionUtils.decryptFileWithKey(KeyManagerUtils.getLegacyKey(), encryptedFile, tempPlain);
+            EncryptionUtils.encryptFileWithKey(SessionKeyHolder.require(), tempPlain, newEncrypted);
+
+            // Verifica que a nova cifra decifra corretamente com a DEK nova antes de trocar.
+            File verifyFile = File.createTempFile("verify_", ".pdf", getCacheDir());
+            try {
+                EncryptionUtils.decryptFileWithKey(SessionKeyHolder.require(), newEncrypted, verifyFile);
+            } finally {
+                EncryptionUtils.secureDelete(verifyFile);
+            }
+
+            EncryptionUtils.replaceFileAtomically(newEncrypted, encryptedFile);
+
+            pdf.keyVersion = 2;
+            db.pdfDao().update(pdf);
+        } finally {
+            EncryptionUtils.secureDelete(tempPlain);
+            if (newEncrypted.exists()) {
+                EncryptionUtils.secureDelete(newEncrypted);
+            }
         }
+    }
 
-        // Setup Numpad no diálogo
-        int[] buttonIds = {
-                R.id.btn0, R.id.btn1, R.id.btn2, R.id.btn3, R.id.btn4,
-                R.id.btn5, R.id.btn6, R.id.btn7, R.id.btn8, R.id.btn9
-        };
+    /**
+     * Re-criptografa em background todo título de PDF ainda em texto puro
+     * (Pdf#metadataVersion == 1) e renomeia o arquivo no disco (nomeado hoje a partir do
+     * nome original) para um UUID opaco, para que nem o banco nem o nome do arquivo revelem
+     * o nome do PDF. Mesmo padrão resumível por linha de migrateLegacyEncryptedFilesIfNeeded,
+     * enfileirada logo depois no mesmo AppExecutors.background() de thread única.
+     */
+    private void migrateLegacyMetadataIfNeeded() {
+        AppExecutors.background().execute(() -> {
+            int legacyCount;
+            try {
+                legacyCount = db.pdfDao().countLegacyMetadataVersionPdfs();
+            } catch (Exception e) {
+                LoggingUtils.logErrorDebug("MetadataMigration", e);
+                return;
+            }
+            if (legacyCount == 0) {
+                return;
+            }
 
-        for (int id : buttonIds) {
-            dialogView.findViewById(id).setOnClickListener(v -> {
-                if (inputPin.size() < 6) {
-                    inputPin.add(((TextView) v).getText().toString());
-                    for (int i = 0; i < 6; i++) {
-                        dots[i].setBackgroundResource(i < inputPin.size() ? R.drawable.pin_dot_filled : R.drawable.pin_dot_empty);
-                    }
-                    if (inputPin.size() == 6) {
-                        if (PinSecurityUtils.verifyAndMigratePin(prefs, String.join("", inputPin))) {
-                            dialog.dismiss();
-                            onSuccess.run();
-                        } else {
-                            Toast.makeText(this, R.string.invalid_pin, Toast.LENGTH_SHORT).show();
-                            inputPin.clear();
-                            for (int i = 0; i < 6; i++) {
-                                dots[i].setBackgroundResource(R.drawable.pin_dot_empty);
-                            }
-                        }
-                    }
-                }
-            });
-        }
-
-        dialogView.findViewById(R.id.btn_delete).setOnClickListener(v -> {
-            if (!inputPin.isEmpty()) {
-                inputPin.remove(inputPin.size() - 1);
-                for (int i = 0; i < 6; i++) {
-                    dots[i].setBackgroundResource(i < inputPin.size() ? R.drawable.pin_dot_filled : R.drawable.pin_dot_empty);
+            List<Pdf> legacyPdfs = db.pdfDao().getLegacyMetadataVersionPdfs();
+            for (Pdf pdf : legacyPdfs) {
+                try {
+                    migrateSingleMetadata(pdf);
+                } catch (Exception e) {
+                    LoggingUtils.logErrorDebug("MetadataMigration", e);
+                    // metadataVersion permanece 1: será retomado na próxima abertura do app.
                 }
             }
         });
+    }
 
-        dialog.show();
+    private void migrateSingleMetadata(Pdf pdf) throws Exception {
+        File existingFile = new File(pdf.getUri());
+        File renamedFile = new File(existingFile.getParentFile(), java.util.UUID.randomUUID() + ".enc");
+        EncryptionUtils.replaceFileAtomically(existingFile, renamedFile);
+
+        pdf.title = EncryptionUtils.encryptString(SessionKeyHolder.require(), pdf.title);
+        pdf.uri = renamedFile.getAbsolutePath();
+        pdf.metadataVersion = 2;
+        db.pdfDao().update(pdf);
+    }
+
+    private void authenticateAction(Runnable onAuthenticated) {
+        ReAuthHelper.authenticateAction(this, executor, onAuthenticated);
     }
 
     private void showDeleteAllConfirmationDialog() {

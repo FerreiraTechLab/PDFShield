@@ -20,10 +20,12 @@
     <!-- EXCLUIR: Android Keystore metadata e encrypted prefs (nunca deve ser incluído em backup) -->
     <exclude domain="sharedpref" path="androidx.security.crypto.prefs.xml" />
     
-    <!-- EXCLUIR: Room database (contém URIs de PDFs criptografados e metadados) -->
-    <exclude domain="database" path="pdf_database.db" />
-    <exclude domain="database" path="pdf_database.db-wal" />
-    <exclude domain="database" path="pdf_database.db-shm" />
+    <!-- EXCLUIR: Room database (contém URIs de PDFs criptografados e metadados).
+         O Room abre o banco como "database-name" (sem extensão .db) — o nome
+         real do arquivo no disco, não um nome arbitrário. -->
+    <exclude domain="database" path="database-name" />
+    <exclude domain="database" path="database-name-wal" />
+    <exclude domain="database" path="database-name-shm" />
     
     <!-- EXCLUIR: Cache (contém PDFs decriptografados temporários em memória) -->
     <exclude domain="cache" />

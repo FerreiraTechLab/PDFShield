@@ -21,17 +21,18 @@
         <!-- EXCLUIR: Chaves criptográficas gerenciadas pelo Android Keystore -->
         <exclude domain="sharedpref" path="androidx.security.crypto.prefs.xml" />
         
-        <!-- EXCLUIR: Database de PDFs e metadados -->
-        <exclude domain="database" path="pdf_database.db" />
-        <exclude domain="database" path="pdf_database.db-wal" />
-        <exclude domain="database" path="pdf_database.db-shm" />
-        
+        <!-- EXCLUIR: Database de PDFs e metadados. O Room abre o banco como
+             "database-name" (sem extensão .db) — o nome real do arquivo. -->
+        <exclude domain="database" path="database-name" />
+        <exclude domain="database" path="database-name-wal" />
+        <exclude domain="database" path="database-name-shm" />
+
         <!-- EXCLUIR: Cache e arquivos criptografados -->
         <exclude domain="cache" />
         <exclude domain="file" path="EncryptedPDFs/" />
         <exclude domain="file" path="DecryptedPDFs/" />
-        
-        <!-- 
+
+        <!--
             Efeito: Cloud Backup desabilitado completamente.
             Motivo: PDFShield é um app de criptografia; nenhum dado deve sair do dispositivo
             para cloud sem consentimento explícito do usuário.
@@ -44,9 +45,9 @@
         <exclude domain="sharedpref" path="androidx.security.crypto.prefs.xml" />
         
         <!-- EXCLUIR: Não transferir banco de dados de PDFs -->
-        <exclude domain="database" path="pdf_database.db" />
-        <exclude domain="database" path="pdf_database.db-wal" />
-        <exclude domain="database" path="pdf_database.db-shm" />
+        <exclude domain="database" path="database-name" />
+        <exclude domain="database" path="database-name-wal" />
+        <exclude domain="database" path="database-name-shm" />
         
         <!-- EXCLUIR: Não transferir arquivos criptografados -->
         <exclude domain="cache" />

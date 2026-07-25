@@ -2,12 +2,12 @@ package org.ferreiratechlab.leitordepdfseguro.ui.display;
 
 import android.graphics.pdf.PdfDocument;
 import android.net.Uri;
-import android.util.Log;
 
 public class PdfDocumentWrapper {
     private PdfDocument pdfDocument;
     private String title;
     private Uri uri;  // adicione este campo
+    private int id;
 
     public PdfDocumentWrapper(PdfDocument pdfDocument, String title, Uri uri) {
         this.pdfDocument = pdfDocument;
@@ -29,7 +29,6 @@ public class PdfDocumentWrapper {
     }
 
     public String getTitle() {
-        Log.d("PdfDocumentWrapper", "Title: " + title);
         return title;
     }
 
@@ -40,6 +39,14 @@ public class PdfDocumentWrapper {
 
     public Uri getUri() {
         return uri;  // retorne o campo Uri aqui
+    }
+
+    public int getId() {
+        return id;
+    }
+
+    public void setId(int id) {
+        this.id = id;
     }
 
 //    /**

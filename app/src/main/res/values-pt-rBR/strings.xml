@@ -37,10 +37,9 @@
     <string name="remove_pdf_title">Remover PDF</string>
     <string name="remove_pdf_msg">Deseja remover este PDF da lista? O arquivo original será sobrescrito com zeros e será IMPOSSÍVEL de recuperar.</string>
     <string name="security_warning_title">Aviso de Segurança</string>
-    <string name="backup_warning_msg">Realizar um backup vai descriptografar seus arquivos e deixá-los expostos. Deseja continuar?</string>
-    <string name="backup_progress">Realizando Backup...</string>
-    <string name="backup_success">Backup concluído com sucesso.\nOs backups foram salvos em: %s</string>
-    <string name="backup_success_single">Backup realizado com sucesso</string>
+    <string name="backup_warning_msg">Isso vai descriptografar seus arquivos para que você possa salvá-los ou compartilhá-los fora do PDFShield. A cópia descriptografada fica apenas no cache privado do app até você escolher um destino. Deseja continuar?</string>
+    <string name="backup_progress">Descriptografando para backup…</string>
+    <string name="backup_success_single">Compartilhar PDF descriptografado</string>
     <string name="backup_error">Erro ao realizar o backup</string>
     <string name="pdf_removed_success">PDF removido com sucesso</string>
     <string name="all_pdfs_removed_success">Todos os PDFs foram removidos com sucesso</string>
@@ -70,10 +69,50 @@
     <string name="pin_mismatch">Os PINs não coincidem. Tente novamente.</string>
     <string name="enter_pin">Digitar PIN</string>
     <string name="invalid_pin">PIN incorreto. Tente novamente.</string>
+    <string name="pin_locked_out">Muitas tentativas incorretas. Tente novamente em %1$s.</string>
     <string name="pin_setup_success">PIN definido com sucesso</string>
+    <string name="pin_setup_error">Falha ao configurar a criptografia. Tente novamente.</string>
+    <string name="migrating_encryption">Atualizando a criptografia dos arquivos…</string>
     <string name="link_biometrics">Vincular Biometria</string>
     <string name="link_biometrics_msg">Deseja usar sua digital para desbloquear o app? (Você ainda precisará do PIN se a biometria falhar)</string>
     <string name="yes">Sim</string>
     <string name="no">Não</string>
     <string name="biometric_toggle_label">Entrar com Digital</string>
+
+    <!-- Home (tela de escolha pós-login) -->
+    <string name="home_choose_title">O que você quer abrir?</string>
+    <string name="home_pdfs_option">PDFs</string>
+    <string name="home_texts_option">Textos</string>
+
+    <!-- Módulo de Textos salvos -->
+    <string name="texts_title">Textos Salvos</string>
+    <string name="search_hint">Buscar…</string>
+    <string name="no_texts">Nenhum texto salvo</string>
+    <string name="add_text">Adicionar texto</string>
+    <string name="clear_all_texts">Limpar tudo</string>
+    <string name="nav_switch_to_pdfs">Ver PDFs</string>
+    <string name="nav_switch_to_texts">Ver Textos</string>
+    <string name="nav_import_texts">Importar textos</string>
+    <string name="nav_export_texts">Exportar textos</string>
+    <string name="nav_check_clipboard">Verificar área de transferência</string>
+    <string name="add_text_dialog_title">Novo texto</string>
+    <string name="add_text_hint">Digite ou cole um texto/link</string>
+    <string name="text_copied">Copiado para a área de transferência</string>
+    <string name="text_saved">Texto salvo</string>
+    <string name="text_deleted">Texto excluído</string>
+    <string name="clipboard_save_title">Salvar da área de transferência?</string>
+    <string name="clipboard_save_msg">Encontramos isto na área de transferência:\n\n\"%s\"\n\nDeseja salvar?</string>
+    <string name="delete_text_title">Excluir texto</string>
+    <string name="delete_text_msg">Deseja excluir este texto?</string>
+    <string name="clear_all_texts_title">Limpar todos os textos</string>
+    <string name="clear_all_texts_msg">Isso vai excluir todos os textos salvos. Essa ação não pode ser desfeita.</string>
+    <string name="multiline_not_supported">Links não podem ter quebra de linha.</string>
+    <string name="text_already_saved">Esse texto já está salvo</string>
+    <string name="import_texts_success">%d texto(s) importado(s)</string>
+    <string name="export_texts_success">Textos exportados com sucesso</string>
+    <string name="import_export_error">Erro ao importar/exportar textos</string>
+    <string name="export_texts_warning_msg">Isso vai gerar um arquivo .txt com todos os seus textos salvos em texto puro (sem criptografia), no local que você escolher. Deseja continuar?</string>
+    <string name="delete_import_source_title">Apagar arquivo original?</string>
+    <string name="delete_import_source_msg">Os textos importados já estão criptografados no app. Deseja apagar com segurança o arquivo .txt original (que ainda está em texto puro)?</string>
+    <string name="text_empty_error">Digite algum texto primeiro</string>
 </resources>
